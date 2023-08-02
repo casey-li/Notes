@@ -30,12 +30,16 @@
   - [:lollipop: 310. 最小高度树](#lollipop-310-最小高度树)
   - [:lollipop: 1000. 合并石头的最低成本](#lollipop-1000-合并石头的最低成本)
   - [:lollipop: 2376. 统计特殊整数](#lollipop-2376-统计特殊整数)
+  - [:lollipop: 233. 数字 1 的个数](#lollipop-233-数字-1-的个数)
+  - [:lollipop: 600. 不含连续1的非负整数](#lollipop-600-不含连续1的非负整数)
   - [:lollipop: ](#lollipop--1)
 - [:wink: 二叉树](#wink-二叉树)
   - [:lollipop: 112. 路径总和](#lollipop-112-路径总和)
   - [:lollipop: ](#lollipop--2)
 - [:wink:](#wink)
   - [:lollipop: ](#lollipop--3)
+- [:wink: 板子](#wink-板子)
+  - [:lollipop: 数位 DP](#lollipop-数位-dp)
 
 # :wink: 二分
 
@@ -3057,8 +3061,6 @@ public:
 
 递归终点：当 i 等于 s 长度时，如果 `isNum` 为真，则表示得到了一个合法数字（因为不合法的不会继续递归下去），返回 1，否则返回 0
 
-**答疑**
-
 **问：`isNum` 这个参数可以去掉吗？**
 
 **答**：对于本题是可以的。由于 `mask` 中记录了数字，可以通过判断 `mask` 是否为 0 来判断前面是否填了数字，所以 `isNum` 可以省略。
@@ -3078,6 +3080,56 @@ public:
 由于前面选的数字会影响后面选的数字，两次递归到相同的 i，如果前面选的数字不一样，计算出的结果就可能是不一样的。如果只记忆化 i，就可能会算出错误的结果。
 
 也可以这样理解：记忆化搜索要求递归函数无副作用（除了修改 `cache` 数组），从而保证递归到同一个状态时，计算出的结果是一样的
+
+
+**总结**
+
+- 记忆化仅记忆不受限制且为数字的结果
+
+- 遍历的数字的上界由 isLimit 决定
+  
+  - isLimit 为 true 的话上界为当前数字
+    
+  - isLimit 为 false 的话上界任取，可以为 9 
+
+- 遍历的数字的下界由 isNum 决定
+
+  - isNum 为 true, 下界为 0
+
+  -  isNum 为 false, 可以直接跳过计算结果 (跳过的话 isLimit 就为 false), 再计算不跳过的结果, 此时下界为 1 (跳过相当于为 0 )
+
+- 往下递归的时候参数的改变
+
+- mask 加上当前选的即可, 即 mask = mask | (1 << d)
+
+- isLimit 跟当前的 isLimit 和选的数相关, isLimit = isLimit && d == up (当且仅当目前受限并且选的仍为最大值时仍受限)
+
+-  isNum 只要选了数字就为 true, 只有为 false 时并且直接跳过时才接着为 false
+
+根据题意决定要不要 isLimit 以及 isNum 即可, 板子：
+
+```c++
+function<int(int, int, bool, bool)> dfs = [&](int i, int mask, bool isLimit, bool isNum) -> int {
+   if (i == m) return isNum; // 到达末尾并且为数字, 返回 1
+   // 去掉另外两个参数的影响
+   if (!isLimit && isNum && cache[i][mask] != -1) return cache[i][mask];
+   int res = 0;
+   if (!isNum) { // 当前不是数字的话可以跳过, 跳过后就不受 n 的约束了
+       res = dfs(i + 1, mask, false, false);
+   }
+   int up = isLimit ? s[i] - '0' : 9; // 确定数字上界
+   // 下界跟 isNum 相关, 若是数字从 0 开始，否则从 1 开始
+   for (int d = 1 - isNum; d <= up; ++d) {
+       if ((mask >> d & 1) == 0) { // 当前数字没选过
+           res += dfs(i + 1, mask | (1 << d), isLimit && d == up, true);
+       }
+   }
+   if (!isLimit && isNum) { // 只记忆化不受制约并且是数字的结果
+       cache[i][mask] = res;
+   }
+   return res;
+};
+```
 
 - **:beers: 代码**
 
@@ -3116,11 +3168,249 @@ public:
 ```
 
 *   时间复杂度：`O(m*D*2^D)`，其中 m 为 s 的长度，即 O(log⁡n)；D=10。由于每个状态只会计算一次，因此动态规划的时间复杂度 = 状态个数 × 单个状态的计算时间。本题状态个数为 O(m*2^D)，单个状态的计算时间为 O(D)，因此时间复杂度为 `O(m*D*2^D)`
+  
 *   空间复杂度：O(m*2^D)
+
 > Go
 
 ```go
+func countSpecialNumbers(n int) int {
+    s := strconv.Itoa(n)
+    m := len(s)
+    cache := make([][1 << 10]int, m)
+    for i := range cache {
+        for j := range cache[i] {
+            cache[i][j] = -1
+        }
+    }
+    var dfs func(int, int, bool, bool) int
+    dfs = func(i, mask int, isLimit, isNum bool) int {
+        if i == m {
+            if isNum {
+                return 1
+            }
+            return 0
+        }
+        if !isLimit && isNum && cache[i][mask] != -1 {
+            return cache[i][mask]
+        }
+        res := 0
+        up, low := 9, 0
+        if !isNum {
+            res = dfs(i + 1, mask, false, false)
+            low = 1
+        }
+        if isLimit {
+            up = int(s[i] - '0')
+        }
+        for ; low <= up; low++ {
+            if mask >> low & 1 == 0 {
+                res += dfs(i + 1, mask | (1 << low), isLimit && low == up, true)
+            }
+        }
+        if !isLimit && isNum {
+            cache[i][mask] = res
+        }
+        return res
+    }
+    return dfs(0, 0, true, false)
+}
+```
 
+## :lollipop: [233. 数字 1 的个数](https://leetcode.cn/problems/number-of-digit-one/description/)
+
+同[面试题 17.06. 2出现的次数](https://leetcode.cn/problems/number-of-2s-in-range-lcci/description/)
+
+- :cherry_blossom: 思路
+
+自己写的数位 DP 的第二题，还是没写出来
+
+定义 `dfs(i, cnt, isLimit, isNum)` 表示构造从左往右第 i 位, 已经出现了 `cnt` 个 1，在这种情况下，继续构造最终会得到的 1 的个数（你可以直接从回溯的角度理解这个过程，只不过是多了个记忆化）
+
+对于本题来说，由于前导零对答案无影响, `isNum` 可以省略
+
+对于一个固定的 `(i,cnt1)`，这个状态受到 `isLimit` 的约束在整个递归过程中至多会出现一次，没必要记忆化
+
+另外，如果只记忆化 `(i,cnt1)`，dp 数组的含义就变成在不受到约束时的合法方案数，所以要在 `!isLimit` 成立时才去记忆化
+
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+class Solution {
+public:
+    int countDigitOne(int n) {
+        string s = to_string(n);
+        int m = s.size();
+        // 记忆化 i 和 cnt 的原因为后面数字任选的情况下, 后面能选的 1 的数目是相等的
+        // cache[i][num] 表示 i + 1 ~ 最后一位任选并且当前已经选了 num 个 1 的情况下能选的 1 的个数
+        // 12XXX 能选的 1 的个数跟 13XXX, 21XXX, 31XXX, ... 是一样的
+        vector<vector<int>> cache(m, vector<int>(m, -1));
+        function<int(int, int, bool)> dfs = [&](int i, int cnt, bool isLimit) -> int {
+            if (i == m) return cnt;
+            if (!isLimit && cache[i][cnt] != -1) return cache[i][cnt];
+            int up = isLimit ? s[i] - '0' : 9, res = 0;
+            for (int d = 0; d <= up; ++d) {
+                res += dfs(i + 1, cnt + (d == 1), isLimit && d == up);
+            }
+            if (!isLimit) {
+                cache[i][cnt] = res;
+            }
+            return res;
+        };
+        return dfs(0, 0, true);
+    }
+};
+```
+
+> Go
+
+```go
+func countDigitOne(n int) int {
+    s := strconv.Itoa(n)
+    m := len(s)
+    cache := make([][]int, m)
+    for i := range cache {
+        cache[i] = make([]int, m)
+        for j := range cache[i] {
+            cache[i][j] = -1
+        }
+    }
+    var dfs func(int, int, bool) int
+    dfs = func(i, cnt int, isLimit bool) int {
+        if i == m {
+            return cnt
+        }
+        if !isLimit && cache[i][cnt] != -1 {
+            return cache[i][cnt]
+        }
+        up, res := 9, 0
+        if isLimit {
+            up = int(s[i] - '0')
+        }
+        for d := 0; d <= up; d++ {
+            if d == 1 {
+                res += dfs(i + 1, cnt + 1, isLimit && d == up)
+            } else {
+                res += dfs(i + 1, cnt, isLimit && d == up)
+            }
+        }
+        if !isLimit {
+            cache[i][cnt] = res
+        }
+        return res
+    }
+    return dfs(0, 0, true)
+}
+```
+
+## :lollipop: [600. 不含连续1的非负整数](https://leetcode.cn/problems/non-negative-integers-without-consecutive-ones/description/)
+
+- :cherry_blossom: 思路
+
+数位 DP, 板子题，终于写出来了一次
+
+不过还有可以优化的地方, 自己写的不够优雅
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+// 自己写的，用位运算
+class Solution {
+public:
+    int findIntegers(int n) {
+        int m = 0;
+        while (n >> m) ++m;
+        int cache[m][2];
+        memset(cache, -1, sizeof(cache));
+        // 返回考虑第 i 位往后的数字并且前一个选了 last 的情况下的不含连续 1 的非负整数
+        // 因为 10XXX 和 00XXX 的结果相同 (只要能走到第 m 位, 结果就加1)
+        function<int(int, int, bool)> dfs = [&](int i, int last, bool isLimit) -> int {
+            if (i == m) return 1;
+            if (!isLimit && cache[i][last] != -1) return cache[i][last];
+            int res = 0;
+            // 不管上一个选的是什么，必定可以选 0
+            // 原来数字的第 i 位为 n >> (m - 1 - i) & 1
+            res += dfs(i + 1, 0, isLimit && 0 == ((n >> m - 1 - i) & 1));
+            // 当前想选 1, 上一位必须为 0, 若当前无限制则可选 1, 若有限制得看原来是不是 1
+            if (last == 0 && (!isLimit || (n >> m - 1 - i) & 1)) {
+                res += dfs(i + 1, 1, isLimit && 1 == ((n >> m - 1 - i) & 1));
+            }
+            if (!isLimit) {
+                cache[i][last] = res;
+            }
+            return res;
+        };
+        return dfs(0, 0, true);
+    }
+};
+
+// 可以用 bitset<32>(n)转化为二进制，然后完全套板子
+class Solution {
+public:
+    int findIntegers(int n) {
+        string s = bitset<32>(n).to_string();
+        int m = s.size();
+        int cache[m][2];
+        memset(cache, -1, sizeof(cache));
+        // 返回考虑第 i 位往后的数字并且前一个选了 last 的情况下的不含连续 1 的非负整数
+        // 因为 10XXX 和 00XXX 的结果相同 (只要能走到第 m 位, 结果就加1)
+        function<int(int, int, bool)> dfs = [&](int i, int last, bool isLimit) -> int {
+            if (i == m) return 1;
+            if (!isLimit && cache[i][last] != -1) return cache[i][last];
+            int up = isLimit ? s[i] - '0' : 1, res = 0;
+            for (int d = 0; d <= up; ++d) {
+                if (d == 1 && last == 1) continue;
+                res += dfs(i + 1, d, isLimit && d == up);
+            }
+            if (!isLimit) {
+                cache[i][last] = res;
+            }
+            return res;
+        };
+        return dfs(0, 0, true);
+    }
+};
+```
+
+> Go
+
+```go
+// Go 可以用 strconv.FormatInt(int64(n), 2) 转二进制字符串
+func findIntegers(n int) int {
+    s := strconv.FormatInt(int64(n), 2)
+    m := len(s)
+    cache := make([][2]int, m)
+    for i := range cache {
+        cache[i] = [2]int{-1, -1}
+    }
+    var dfs func(int, int, bool) int
+    dfs = func(i, last int, isLimit bool) int {
+        if i == m {
+            return 1
+        }
+        if !isLimit && cache[i][last] != -1 {
+            return cache[i][last]
+        }
+        up := 1
+        if isLimit {
+            up = int(s[i] & 1)
+        }
+        res := dfs(i + 1, 0, isLimit && up == 0) // 填 0
+        if last == 0 && up == 1 { // 可以填 1
+            res += dfs(i + 1, 1, isLimit)
+        }
+        if !isLimit {
+            cache[i][last] = res
+        }
+        return res
+    }
+    return dfs(0, 0, true)
+}
 ```
 
 ## :lollipop: []()
@@ -3220,5 +3510,74 @@ func hasPathSum(root *TreeNode, targetSum int) bool {
 ```go
 
 ```
+
+# :wink: 板子
+
+**运算符优先级:**
+
+`(), [], ->` 最高
+`!, *` (解引用), `&` (取地址), `+`, `-` (正负号), `++, --` 次之
+`*, /, %`
+`+, -`
+`<<, >>` (移位运算符)
+`<, <=, >, >=` (比较运算符)
+`==, !=`
+`&` (按位与)
+`^`
+`|`
+`&&` (逻辑与)
+`||`
+`=, +=, -=, ...`
+
+## :lollipop: 数位 DP
+
+- 记忆化仅记忆不受限制且为数字的结果
+
+- 遍历的数字的上界由 isLimit 决定
+  
+  - isLimit 为 true 的话上界为当前数字
+    
+  - isLimit 为 false 的话上界任取，可以为 9 
+
+- 遍历的数字的下界由 isNum 决定
+
+  - isNum 为 true, 下界为 0
+
+  -  isNum 为 false, 可以直接跳过计算结果 (跳过的话 isLimit 就为 false), 再计算不跳过的结果, 此时下界为 1 (跳过相当于为 0 )
+
+- 往下递归的时候参数的改变
+
+- mask 加上当前选的即可, 即 mask = mask | (1 << d)
+
+- isLimit 跟当前的 isLimit 和选的数相关, isLimit = isLimit && d == up (当且仅当目前受限并且选的仍为最大值时仍受限)
+
+-  isNum 只要选了数字就为 true, 只有为 false 时并且直接跳过时才接着为 false
+
+根据题意决定要不要 isLimit 以及 isNum 即可, 板子：
+
+```c++
+function<int(int, int, bool, bool)> dfs = [&](int i, int mask, bool isLimit, bool isNum) -> int {
+   if (i == m) return isNum; // 到达末尾并且为数字, 返回 1
+   // 去掉另外两个参数的影响
+   if (!isLimit && isNum && cache[i][mask] != -1) return cache[i][mask];
+   int res = 0;
+   if (!isNum) { // 当前不是数字的话可以跳过, 跳过后就不受 n 的约束了
+       res = dfs(i + 1, mask, false, false);
+   }
+   int up = isLimit ? s[i] - '0' : 9; // 确定数字上界
+   // 下界跟 isNum 相关, 若是数字从 0 开始，否则从 1 开始
+   for (int d = 1 - isNum; d <= up; ++d) {
+       if ((mask >> d & 1) == 0) { // 当前数字没选过
+           res += dfs(i + 1, mask | (1 << d), isLimit && d == up, true);
+       }
+   }
+   if (!isLimit && isNum) { // 只记忆化不受制约并且是数字的结果
+       cache[i][mask] = res;
+   }
+   return res;
+};
+```
+
+- [2376. 统计特殊整数](https://leetcode.cn/problems/count-special-integers/description/)
 
 
