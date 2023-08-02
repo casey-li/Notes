@@ -29,6 +29,7 @@
   - [:lollipop: 834. 树中距离之和](#lollipop-834-树中距离之和)
   - [:lollipop: 310. 最小高度树](#lollipop-310-最小高度树)
   - [:lollipop: 1000. 合并石头的最低成本](#lollipop-1000-合并石头的最低成本)
+  - [:lollipop: 2376. 统计特殊整数](#lollipop-2376-统计特殊整数)
   - [:lollipop: ](#lollipop--1)
 - [:wink: 二叉树](#wink-二叉树)
   - [:lollipop: 112. 路径总和](#lollipop-112-路径总和)
@@ -2963,16 +2964,18 @@ public:
         vector<int> sum(n + 1, 0); // 保存前缀和
         for (int i = 0; i < n; ++i)
             sum[i + 1] = sum[i] + stones[i];
-        
+        // 计算将 [i, j] 合并成一堆石头的最小成本
         vector<vector<int>> cache(n, vector<int>(n, -1));
         function<int(int, int)> dfs = [&](int i, int j) -> int {
             if (i == j) return 0; // 只有一堆，不用合并
             int &res = cache[i][j];
             if (res != -1) return res;
             res = INT_MAX;
+            // 不断的将子数组分成更小的片段, 递归的计算左侧子数组和右侧子数组合并成一堆的最小成本
             for (int m = i; m < j; m += k - 1) {
                 res = min(res, dfs(i, m) + dfs(m + 1, j));
             }
+            // 若当前子数组可以合并为一堆的话，增加成本直接返回即可
             if ((j - i) % (k - 1) == 0) // 可以合并成一堆
                 res += sum[j + 1] - sum[i];
             return res;
@@ -2980,7 +2983,40 @@ public:
         return dfs(0, n - 1);
     }
 };
+
+// 递推
+class Solution {
+public:
+    int mergeStones(vector<int>& stones, int k) {
+        int n = stones.size();
+        if ((n - 1) % (k - 1)) return -1;
+
+        vector<int> sum(n + 1, 0); // 保存前缀和
+        for (int i = 0; i < n; ++i)
+            sum[i + 1] = sum[i] + stones[i];
+        
+        vector<vector<int>> f(n, vector<int>(n, 0));
+        for (int i = n - 1; i >= 0; --i) {
+            f[i][i] = 0;
+            for (int j = i + 1; j < n; ++j) {
+                f[i][j] = INT_MAX;
+                for (int m = i; m < j; m += k - 1) {
+                    f[i][j] = min(f[i][j], f[i][m] + f[m + 1][j]);
+                }
+                if ((j - i) % (k - 1) == 0) {
+                    f[i][j] += sum[j + 1] - sum[i];
+                }
+            }
+        }
+        return f[0][n - 1];
+    }
+};
 ```
+
+时间复杂度：O(n^3\k)，其中 n 为 stones 的长度。动态规划的时间复杂度 = 状态个数 × 单个状态的计算时间。这里状态个数为 O(n^2)，单个状态的计算时间为 O(nk)，因此时间复杂度为 O(n^3\k)
+
+空间复杂度：O(n^2)
+
 
 > Go
 
@@ -2988,6 +3024,104 @@ public:
 
 ```
 
+
+## :lollipop: [2376. 统计特殊整数](https://leetcode.cn/problems/count-special-integers/description/)
+
+- :cherry_blossom: 思路
+
+自己不会
+
+**数位 DP (灵神的板子)**
+
+将 n 转化为 字符串 s, 定义 `f(i, mask, isLimit, isNum)` 表示构造第 i 位及其之后数位的合法方案数，其余参数的含义为:
+
+- `mask`: 表示前面选过的数字集合，换句话说，第 i 位要选的数字不能在 `mask` 中
+
+- `isLimit` 表示当前是否受到了 n 的约束（注意要构造的数字不能超过 n）。若为真，则第 i 位填入的数字至多为 `s[i]`，否则可以是 9。如果在受到约束的情况下填了 `s[i]`，那么后续填入的数字仍会受到 n 的约束。例如 n=123，那么 i=0 填的是 1 的话，i=1 的这一位至多填 2
+
+- `isNum` 表示 i 前面的数位是否填了数字。若为假，则当前位可以跳过（不填数字），或者要填入的数字至少为 1；若为真，则要填入的数字可以从 0 开始。例如 n=123，在 i=0 时跳过的话，相当于后面要构造的是一个 9 以内的数字了，如果 i=1 不跳过，那么相当于构造一个 10 到 99 的两位数，如果 i=1 跳过，相当于构造的是一个 9 以内的数字
+
+**实现细节**
+
+递归入口：`f(0, 0, true, false)`，表示：
+
+- 从 `s[0]` 开始枚举；
+- 一开始集合中没有数字；
+- 一开始要受到 n 的约束（否则就可以随意填了，这肯定不行）；
+- 一开始没有填数字。
+
+递归中：
+
+- 如果 `isNum` 为假，说明前面没有填数字，那么当前也可以不填数字。一旦从这里递归下去， `isLimit` 就可以置为 `false` 了，这是因为 `s[0]` 必然是大于 0 的，后面就不受到 n 的约束了。或者说，最高位不填数字，后面无论怎么填都比 n 小
+- 如果 `isNum` 为真，那么当前必须填一个数字。枚举填入的数字，根据 `isNum` 和 `isLimit` 来决定填入数字的范围
+
+递归终点：当 i 等于 s 长度时，如果 `isNum` 为真，则表示得到了一个合法数字（因为不合法的不会继续递归下去），返回 1，否则返回 0
+
+**答疑**
+
+**问：`isNum` 这个参数可以去掉吗？**
+
+**答**：对于本题是可以的。由于 `mask` 中记录了数字，可以通过判断 `mask` 是否为 0 来判断前面是否填了数字，所以 `isNum` 可以省略。
+
+下面的代码保留了 `isNum`, 主要是为了方便大家掌握这个模板。因为有些题目不需要 `mask`, 但需要 `isNum`
+
+**问：记忆化四个状态有点麻烦，能不能只记忆化 (i, mask) 这两个状态？**
+
+**答**：是可以的。比如 n=234，第一位填 2，第二位填 3，后面无论怎么递归，都不会再次递归到第一位填 2，第二位填 3 的情况，所以不需要记录。又比如，第一位不填，第二位也不填，后面无论怎么递归也不会再次递归到这种情况，所以也不需要记录。
+
+根据这个例子，我们可以只记录不受到 isLimit 或 isNum 约束时的状态 (i,mask)。比如 n=234，第一位（最高位）填的 1，那么继续递归，后面就可以随便填，所以状态 (1,2) 就表示前面填了一个 1（对应的 mask=2），从第二位往后随便填的方案数
+
+**问：能不能只记忆化 i？**
+
+**答**：这是不行的。想一想，我们为什么要用记忆化？如果递归到同一个状态时，计算出的结果是一样的，那么第二次递归到同一个状态，就可以直接返回第一次计算的结果了。通过保存第一次计算的结果，来优化时间复杂度。
+
+由于前面选的数字会影响后面选的数字，两次递归到相同的 i，如果前面选的数字不一样，计算出的结果就可能是不一样的。如果只记忆化 i，就可能会算出错误的结果。
+
+也可以这样理解：记忆化搜索要求递归函数无副作用（除了修改 `cache` 数组），从而保证递归到同一个状态时，计算出的结果是一样的
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+class Solution {
+public:
+    int countSpecialNumbers(int n) {
+        auto s = to_string(n);
+        int m = s.size(), cache[m][1 << 10]; // 表示1 到 9 是否选过
+        memset(cache, -1, sizeof(cache));
+        function<int(int, int, bool, bool)> dfs = [&](int i, int mask, bool isLimit, bool isNum) -> int {
+            if (i == m) return isNum;
+            // 去掉另外两个参数的影响
+            if (!isLimit && isNum && cache[i][mask] != -1) return cache[i][mask];
+            int res = 0;
+            if (!isNum) { // 当前不是数字的话可以跳过, 跳过后就不受 n 的约束了
+                res = dfs(i + 1, mask, false, false);
+            }
+            int up = isLimit ? s[i] - '0' : 9; // 确定数字上界
+            // 下界跟 isNum 相关, 若是数字从 0 开始，否则从 1 开始
+            for (int d = 1 - isNum; d <= up; ++d) {
+                if ((mask >> d & 1) == 0) { // 当前数字没选过
+                    res += dfs(i + 1, mask | (1 << d), isLimit && d == up, true);
+                }
+            }
+            if (!isLimit && isNum) { // 只记忆化不受制约并且是数字的结果
+                cache[i][mask] = res;
+            }
+            return res;
+        };
+        return dfs(0, 0, true, false);
+    }
+};
+```
+
+*   时间复杂度：`O(m*D*2^D)`，其中 m 为 s 的长度，即 O(log⁡n)；D=10。由于每个状态只会计算一次，因此动态规划的时间复杂度 = 状态个数 × 单个状态的计算时间。本题状态个数为 O(m*2^D)，单个状态的计算时间为 O(D)，因此时间复杂度为 `O(m*D*2^D)`
+*   空间复杂度：O(m*2^D)
+> Go
+
+```go
+
+```
 
 ## :lollipop: []()
 
