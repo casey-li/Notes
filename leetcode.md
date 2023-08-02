@@ -9,6 +9,8 @@
 - [:wink: 数学](#wink-数学)
   - [:lollipop: 89. 格雷编码](#lollipop-89-格雷编码)
   - [:lollipop: 169. 多数元素](#lollipop-169-多数元素)
+  - [:lollipop: 384. 打乱数组](#lollipop-384-打乱数组)
+  - [:lollipop: ](#lollipop-)
 - [:wink: 数组](#wink-数组)
   - [:lollipop: 215. 数组中的第K个最大元素](#lollipop-215-数组中的第k个最大元素)
   - [:lollipop: 347. 前 K 个高频元素](#lollipop-347-前-k-个高频元素)
@@ -26,12 +28,13 @@
   - [:lollipop: 72. 编辑距离](#lollipop-72-编辑距离)
   - [:lollipop: 834. 树中距离之和](#lollipop-834-树中距离之和)
   - [:lollipop: 310. 最小高度树](#lollipop-310-最小高度树)
-  - [:lollipop: ](#lollipop-)
+  - [:lollipop: 1000. 合并石头的最低成本](#lollipop-1000-合并石头的最低成本)
+  - [:lollipop: ](#lollipop--1)
 - [:wink: 二叉树](#wink-二叉树)
   - [:lollipop: 112. 路径总和](#lollipop-112-路径总和)
-  - [:lollipop: ](#lollipop--1)
-- [:wink:](#wink)
   - [:lollipop: ](#lollipop--2)
+- [:wink:](#wink)
+  - [:lollipop: ](#lollipop--3)
 
 # :wink: 二分
 
@@ -757,6 +760,90 @@ func majorityElement(nums []int) int {
     }
     return winner
 }
+```
+## :lollipop: [384. 打乱数组](https://leetcode.cn/problems/shuffle-an-array/description/)
+
+- :cherry_blossom: 思路
+
+自己不会写
+
+将数组分为乱序区和非乱序区，每次从非乱序区中随机选择一个元素并与非乱序区的第一个元素进行交换，然后扩充乱序区即可
+
+打乱的时间复杂度为 O(n), 因为只需要遍历 n 个元素
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+class Solution {
+public:
+    Solution(vector<int>& nums) : nums(nums), original_nums(nums) { }
+
+    vector<int> reset() {
+        return nums = original_nums;
+    }
+
+    vector<int> shuffle() {
+        int n = nums.size();
+        for (int i = 0; i < n; ++i) {
+            int j = i + rand() % (n - i);
+            swap(nums[i], nums[j]);
+        }
+        return nums;
+    }
+    vector<int> nums;
+    vector<int> original_nums;
+};
+```
+
+> Go
+
+```go
+type Solution struct {
+    nums []int
+    original_nums []int
+}
+
+func Constructor(nums []int) Solution {
+    return Solution {
+        nums : nums,
+        original_nums : append([]int(nil), nums...),
+    }
+}
+
+func (this *Solution) Reset() []int {
+    copy(this.nums, this.original_nums)
+    return this.nums
+}
+
+func (this *Solution) Shuffle() []int {
+    n := len(this.nums)
+    for i := range this.nums {
+        j := i + rand.Intn(n - i)
+        this.nums[i], this.nums[j] = this.nums[j], this.nums[i]
+    }
+    return this.nums
+}
+```
+
+## :lollipop: []()
+
+- :cherry_blossom: 思路
+
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+
+```
+
+> Go
+
+```go
+
 ```
 
 # :wink: 数组
@@ -2798,6 +2885,107 @@ func findMinHeightTrees(n int, edges [][]int) []int {
     }
     return res
 }
+```
+
+## :lollipop: [1000. 合并石头的最低成本](https://leetcode.cn/problems/minimum-cost-to-merge-stones/description/)
+
+- :cherry_blossom: 思路
+
+自己不会
+
+区间 DP
+
+注意虽然涉及到了很多次的合并，但是并不需要修改数组，因为合并的代价就为数组的区间和，可以利用前缀和预处理
+
+区间 DP 的推导思路 (灵神的，很清晰)
+
+![](https://pic.leetcode.cn/1680534488-qZHfMY-1000-3d-cut.png)
+
+- 什么时候输出 −1 呢？
+
+从 n 堆变成 1 堆，需要减少 n−1 堆。而每次合并都会减少 k−1 堆，所以 n−1 必须是 k−1 的倍数
+
+- 为什么只考虑分出 1 堆和 p−1 堆，而不考虑分出 x 堆和 p−x 堆？
+
+答：无需计算，因为 p−1 堆继续递归又可以分出 1 堆和 p−2 堆，和之前分出的 1 堆组合，就已经能表达出「分出 2 堆和 p−2 堆」的情况了。其他同理。所以只需要考虑分出 1 堆和 p−1 堆
+
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+// 记忆化
+class Solution {
+public:
+    int mergeStones(vector<int>& stones, int k) {
+        int n = stones.size();
+        if ((n - 1) % (k - 1)) return -1;
+        vector<int> sum(n + 1, 0); // 保存前缀和
+        for (int i = 0; i < n; ++i)
+            sum[i + 1] = sum[i] + stones[i];
+        // 返回把 i ~ j 合成 p 堆的最小成本
+        // 那么就需要枚举把 i ~ m 合成一堆 和 把 m + 1 ~ j 合成 p - 1 堆的最小成本
+        // 为了真的可以合成一堆, m 应每次加 k - 1
+        vector<vector<vector<int>>> cache(n, vector<vector<int>>(n, vector<int>(k + 1, -1)));
+        function<int(int, int, int)> dfs = [&](int i, int j, int p) -> int {
+            int &res = cache[i][j][p];
+            if (res != -1) return res;
+            if (p == 1) { // 合并成 1 堆
+                // 若 i == j, 返回 0; 否则先将所有石头合成 k 堆再进行一次合并即可
+                return res = i == j ? 0 : dfs(i, j, k) + sum[j + 1] - sum[i];
+            }
+            res = INT_MAX;
+            // 枚举哪些石头堆合并成第一堆, 其余石头合并为 p - 1 堆
+            for (int m = i; m < j; m += k - 1) {
+                res = min(res, dfs(i, m, 1) + dfs(m + 1, j, p - 1));
+            }
+            return res;
+        };
+        return dfs(0, n - 1, 1);
+    }
+};
+```
+
+时间复杂度：O(n^3)，其中 n 为 stones 的长度。动态规划的时间复杂度 = 状态个数 × 单个状态的计算时间。这里状态个数为 O(n^2k)，单个状态的计算时间为 O(n/k)，因此时间复杂度为 O(n^3)
+
+空间复杂度：O(n^2*k)
+
+![](https://pic.leetcode.cn/1680534839-WSibYe-1000-2d.png)
+
+```c++
+class Solution {
+public:
+    int mergeStones(vector<int>& stones, int k) {
+        int n = stones.size();
+        if ((n - 1) % (k - 1)) return -1;
+
+        vector<int> sum(n + 1, 0); // 保存前缀和
+        for (int i = 0; i < n; ++i)
+            sum[i + 1] = sum[i] + stones[i];
+        
+        vector<vector<int>> cache(n, vector<int>(n, -1));
+        function<int(int, int)> dfs = [&](int i, int j) -> int {
+            if (i == j) return 0; // 只有一堆，不用合并
+            int &res = cache[i][j];
+            if (res != -1) return res;
+            res = INT_MAX;
+            for (int m = i; m < j; m += k - 1) {
+                res = min(res, dfs(i, m) + dfs(m + 1, j));
+            }
+            if ((j - i) % (k - 1) == 0) // 可以合并成一堆
+                res += sum[j + 1] - sum[i];
+            return res;
+        };
+        return dfs(0, n - 1);
+    }
+};
+```
+
+> Go
+
+```go
+
 ```
 
 
