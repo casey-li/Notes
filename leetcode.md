@@ -15,6 +15,8 @@
   - [:lollipop: 215. 数组中的第K个最大元素](#lollipop-215-数组中的第k个最大元素)
   - [:lollipop: 347. 前 K 个高频元素](#lollipop-347-前-k-个高频元素)
   - [:lollipop: 295. 数据流的中位数](#lollipop-295-数据流的中位数)
+  - [:lollipop: 128. 最长连续序列](#lollipop-128-最长连续序列)
+  - [:lollipop: ](#lollipop--1)
 - [:wink: 贪心](#wink-贪心)
   - [:lollipop: 763. 划分字母区间](#lollipop-763-划分字母区间)
 - [:wink: DP](#wink-dp)
@@ -32,14 +34,17 @@
   - [:lollipop: 2376. 统计特殊整数](#lollipop-2376-统计特殊整数)
   - [:lollipop: 233. 数字 1 的个数](#lollipop-233-数字-1-的个数)
   - [:lollipop: 600. 不含连续1的非负整数](#lollipop-600-不含连续1的非负整数)
-  - [:lollipop: ](#lollipop--1)
+  - [:lollipop: 1012. 至少有 1 位重复的数字](#lollipop-1012-至少有-1-位重复的数字)
+  - [:lollipop: ](#lollipop--2)
 - [:wink: 二叉树](#wink-二叉树)
   - [:lollipop: 112. 路径总和](#lollipop-112-路径总和)
-  - [:lollipop: ](#lollipop--2)
-- [:wink:](#wink)
   - [:lollipop: ](#lollipop--3)
-- [:wink: 板子](#wink-板子)
-  - [:lollipop: 数位 DP](#lollipop-数位-dp)
+- [:wink: 图](#wink-图)
+  - [:lollipop: 785. 判断二分图](#lollipop-785-判断二分图)
+  - [:lollipop: 399. 除法求值](#lollipop-399-除法求值)
+  - [:lollipop: ](#lollipop--4)
+- [:wink:](#wink)
+  - [:lollipop: ](#lollipop--5)
 
 # :wink: 二分
 
@@ -1310,6 +1315,81 @@ func (this *MedianFinder) FindMedian() float64 {
 }
 ```
 
+## :lollipop: [128. 最长连续序列](https://leetcode.cn/problems/longest-consecutive-sequence/description/)
+
+- :cherry_blossom: 思路
+
+暴力做法为枚举每个数做为起点, 在遍历整个数组找比它大 1 的数, O(n^2), 包含很多重复计算。如当前已经确定了连续序列 `1, 2, 3, 4, 5`, 下次遍历到 2 的时候又来一遍, `2, 3, 4, 5` , 无用功
+
+自己只想到了先排序再类似滑动窗口划过去, 当当前边界的值跟之前的值相等或者当前右边界的值恰好比上一个大1时移动右边界, 最后右边界的值减左边界的值 + 1 即为这个连续序列的长度, 但是要排序, O(nlogn)
+
+要想时间复杂度达到 O(n), 需要即不能重复计算, 又得在 O(1) 的时间内找到下一个更大的数; 这个思路很巧, 就是用哈希, 它能在 O(1) 的时间内找到是否存在下一个更大的元素, 为了避免重复计算, 当且仅当这个数字为第一个数字时才计算它的长度 (即不存在 num - 1 这个数), 那么每个数字最多遍历两遍, O(n)
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+class Solution {
+public:
+    int longestConsecutive(vector<int>& nums) {
+        unordered_set<int> uset;
+        for (int &num : nums) uset.emplace(num);
+        int res = 0;
+        for (const int &num : nums) {
+            if (!uset.count(num - 1)) {
+                int next = num;
+                while (uset.count(next)) ++next;
+                res = max(res, next - num);
+            }
+        }
+        return res;
+    }
+};
+```
+
+> Go
+
+```go
+func longestConsecutive(nums []int) int {
+    uset := map[int]bool{}
+    for _, num := range nums {
+        uset[num] = true
+    }
+    res := 0
+    for _, num := range nums {
+        if !uset[num - 1] {
+            next := num + 1
+            for uset[next] {
+                next++
+            }
+            res = max(res, next - num)
+        }
+    }
+    return res
+}
+
+func max(a, b int)int {if a < b {return b}; return a}
+```
+
+## :lollipop: []()
+
+- :cherry_blossom: 思路
+
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+
+```
+
+> Go
+
+```go
+
+```
 
 # :wink: 贪心
 
@@ -3413,6 +3493,129 @@ func findIntegers(n int) int {
 }
 ```
 
+## :lollipop: [1012. 至少有 1 位重复的数字](https://leetcode.cn/problems/numbers-with-repeated-digits/description/)
+
+- :cherry_blossom: 思路
+
+自己写的比较繁琐，新增了一个参数表示当前是否选了重复数字，空间复杂度更大了 (大了一倍)，时间复杂度不变，都是总的数字总和
+
+**正难则反** (这个思路需要好好掌握一下)
+
+正着来不好写的话可以逆着来, 求小于等于整数 n 的无重复数字的数字数目, 那么答案就是 n - 无重复数字的数字数目了, 即[2376. 统计特殊整数](https://leetcode.cn/problems/count-special-integers/description/)
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+// 自己的，新加了一个参数，过倒是也能过，56ms
+class Solution {
+public:
+    int numDupDigitsAtMostN(int n) {
+        string s = to_string(n);
+        int m = s.size();
+        int cache[m][1 << 10][2];
+        memset(cache, -1, sizeof(cache));
+        function<int(int, int, bool, bool, bool)> dfs = [&](int i, int mask, bool duplicate, bool isLimit, bool isNum) -> int {
+            if (i == m) return duplicate;
+            if (!isLimit && isNum && cache[i][mask][duplicate] != -1) return cache[i][mask][duplicate];
+            int res = 0;
+            if (!isNum) {
+                res = dfs(i + 1, mask, false, false, false);
+            }
+            int up = isLimit ? s[i] - '0' : 9;
+            for (int d = 1 - isNum; d <= up; ++d) {
+                res += dfs(i + 1, mask | 1 << d, duplicate || ((mask >> d) & 1), isLimit && d == up, true);
+            }
+            if (!isLimit && isNum) {
+                cache[i][mask][duplicate] = res;
+            }
+            return res;
+        };
+        return dfs(0, 0, false, true, false);
+    }
+};
+
+// 逆向思路
+class Solution {
+public:
+    int numDupDigitsAtMostN(int n) {
+        string s = to_string(n);
+        int m = s.size();
+        int cache[m][1 << 10];
+        memset(cache, -1, sizeof(cache));
+        function<int(int, int, bool, bool)> dfs = [&](int i, int mask, bool isLimit, bool isNum) ->int {
+            if (i == m) return isNum;
+            if (!isLimit && isNum && cache[i][mask] != -1) return cache[i][mask];
+            int res = 0;
+            if (!isNum) {
+                res = dfs(i + 1, mask, false, false);
+            }
+            int up = isLimit ? s[i] - '0' : 9;
+            for (int d = 1 - isNum; d <= up; ++d) {
+                if ((mask >> d & 1) == 0) {
+                    res += dfs(i + 1, mask | 1 << d, isLimit && d == up, true);
+                }
+            }
+            if (!isLimit && isNum) {
+                cache[i][mask] = res;
+            }
+            return res;
+        };
+        return n - dfs(0, 0, true, false);
+    }
+};
+```
+
+> Go
+
+```go
+func numDupDigitsAtMostN(n int) int {
+    s := strconv.Itoa(n)
+    m := len(s)
+    cache := make([][1 << 10]int, m)
+    for i := range cache {
+        for j := range cache[i] {
+            cache[i][j] = -1
+        }
+    }
+    var dfs func(int, int, bool, bool) int
+    dfs = func(i, mask int, isLimit, isNum bool) int {
+        if i == m {
+            if isNum {
+                return 1
+            }
+            return 0
+        }
+        if !isLimit && isNum && cache[i][mask] != -1 {
+            return cache[i][mask]
+        }
+        res := 0
+        if !isNum {
+            res = dfs(i + 1, mask, false, false)
+        }
+        up := 9
+        if isLimit {
+            up = int(s[i] - '0')
+        }
+        low := 1
+        if isNum {
+            low = 0
+        }
+        for d := low; d <= up; d++ {
+            if (mask >> d & 1) == 0 {
+                res += dfs(i + 1, mask | 1 << d, isLimit && d == up, true)
+            }
+        }
+        if !isLimit && isNum {
+            cache[i][mask] = res
+        }
+        return res
+    }
+    return n - dfs(0, 0, true, false)
+}
+```
+
 ## :lollipop: []()
 
 - :cherry_blossom: 思路
@@ -3490,7 +3693,192 @@ func hasPathSum(root *TreeNode, targetSum int) bool {
 
 ```
 
-# :wink: 
+# :wink: 图
+
+## :lollipop: [785. 判断二分图](https://leetcode.cn/problems/is-graph-bipartite/description/)
+
+- :cherry_blossom: 思路
+
+染色法，相邻的点染不同的颜色，若哪个点发现它跟一个与它相邻的点的颜色一样的话，说明不能把这个图划分为两个独立子集，自己想的 BFS, DFS
+
+还可以用并查集来做, 对于任意一个节点而言, 因为它不能跟与它相邻的节点同属于一个集合, 所以应该将所有与它相邻的节点合并为一个集合, 若发现跟它相邻的节点中存在某个节点跟它属于同一个集合的话就证明无法划分为两个独立子集
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+// BFS
+class Solution {
+public:
+    bool isBipartite(vector<vector<int>>& graph) {
+        int n = graph.size();
+        vector<int> color(n, -1);
+        queue<int> q;
+        for (int i = 0; i < n; ++i) {
+            if (color[i] != -1) continue;
+            q.emplace(i);
+            color[i] = 0;
+            while (!q.empty()) {
+                int x = q.front(), c = color[x];
+                q.pop();
+                for (int &next : graph[x]) {
+                    if (color[next] == -1) {
+                        color[next] = 1 - c;
+                        q.emplace(next);
+                    } else if (color[next] == c) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+};
+
+// DFS
+class Solution {
+public:
+    bool isBipartite(vector<vector<int>>& graph) {
+        int n = graph.size();
+        vector<int> color(n, -1);
+        function<bool(int, int)> dfs = [&](int i, int last) -> bool {
+            if (color[i] != -1) return color[i] != last;
+            color[i] = 1 - last;
+            for (int &next : graph[i]) {
+                if (!dfs(next, color[i])) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        for (int i = 0; i < n; ++i) {
+            if (color[i] != -1) continue;
+            if (!dfs(i, 0)) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
+// 并查集
+class UnionFind {
+public:
+    vector<int> fa, size;
+
+    UnionFind(int n) : fa(n), size(n, 1) {
+        iota(fa.begin(), fa.end(), 0);
+    }
+
+    int find(int x) {
+        return fa[x] == x ? x : fa[x] = find(fa[x]); 
+    }
+
+    void unite(int x, int y) {
+        x = find(x);
+        y = find(y);
+        if (x == y) return;
+        if (size[x] < size[y]) {
+            swap(x, y);
+        }
+        fa[y] = x;
+        size[x] += size[y];
+    }
+};
+
+class Solution {
+public:
+    bool isBipartite(vector<vector<int>>& graph) {
+        int n = graph.size();
+        UnionFind uf(n);
+        for (int i = 0; i < n; ++i) {
+            if (graph[i].empty()) continue;
+            for (int j = 0; j < graph[i].size(); ++j) {
+                if (uf.find(i) == uf.find(graph[i][j])) return false;
+                uf.unite(graph[i][0], graph[i][j]);
+            }
+        }
+        return true;
+    }
+};
+```
+
+## :lollipop: [399. 除法求值](https://leetcode.cn/problems/evaluate-division/)
+
+- :cherry_blossom: 思路
+
+不会，**带权并查集**, ，权值为当前节点 `x` 与父亲 `f[x]` 的比值
+假设两点 x 和 y 有共同的父亲f，且 `v[x] / v[f] = a, v[y] / v[f] = b`, 则 `v[x] / v[y] = a / b`
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+class UnionFind {
+public:
+    vector<int> fa;
+    vector<double> weight;
+    //初始化时每个节点是自己的父节点，权重为1.0
+    UnionFind(int n): fa(n), weight(n, 1.0) {
+        iota(fa.begin(), fa.end(), 0);
+    };
+
+    // x / fx = a; fx / f = b;
+    // x / f = a * b;
+    int find(int x) {
+        if (x == fa[x]) return x;
+        int origin = fa[x];
+        fa[x] = find(fa[x]);
+        weight[x] = weight[x] * weight[origin];
+        return fa[x];
+        //无权重：retrun x == fa[x] ? x : fa[x] = find(f[x]);
+        //同理还需要修改x的权重
+    }
+
+    // x / fx = a, y / f = b, x / y = c;
+    // fx / f = (fx / x) / (x / f) = (1 / a) / (b * c) = b * c / a
+    void Union(int x, int y, double value) {
+        int rootx = find(x), rooty = find(y);
+        if(rootx == rooty) return;
+        fa[rootx] = rooty;
+        weight[rootx] = value * weight[y] / weight[x];
+        //无权重：fa[rootx] = rooty; ，仅需修改x的父节点的父节点
+        //同理还需修改x的父节点的权重
+    }
+
+    // x / f = a, y / f = b
+    // x / y = a / b
+    double isConnect(int x, int y) {
+        int rootx = find(x), rooty = find(y);
+        if(rootx != rooty) return -1.0;
+        else return weight[x] / weight[y];
+    }
+};
+
+class Solution {
+public:
+    vector<double> calcEquation(vector<vector<string>>& equations, vector<double>& values, vector<vector<string>>& queries) {
+        unordered_map<string, int> umap;
+        int index = 0, size = values.size();
+        for (auto& vs : equations) {
+            if (!umap.count(vs[0])) umap[vs[0]] = index++;
+            if (!umap.count(vs[1])) umap[vs[1]] = index++;
+        }
+
+        UnionFind Uf(index);
+        for(int i = 0; i < size; ++i)
+            Uf.Union(umap[equations[i][0]], umap[equations[i][1]], values[i]);
+        vector<double> res;
+        for(vector<string>& vs : queries) {
+            if(!umap.count(vs[0]) || !umap.count(vs[1])) res.emplace_back(-1.0);
+            else res.emplace_back(Uf.isConnect(umap[vs[0]], umap[vs[1]]));
+        }
+        return res;
+    }
+};
+```
 
 ## :lollipop: []()
 
@@ -3511,73 +3899,24 @@ func hasPathSum(root *TreeNode, targetSum int) bool {
 
 ```
 
-# :wink: 板子
 
-**运算符优先级:**
+# :wink: 
 
-`(), [], ->` 最高
-`!, *` (解引用), `&` (取地址), `+`, `-` (正负号), `++, --` 次之
-`*, /, %`
-`+, -`
-`<<, >>` (移位运算符)
-`<, <=, >, >=` (比较运算符)
-`==, !=`
-`&` (按位与)
-`^`
-`|`
-`&&` (逻辑与)
-`||`
-`=, +=, -=, ...`
+## :lollipop: []()
 
-## :lollipop: 数位 DP
+- :cherry_blossom: 思路
 
-- 记忆化仅记忆不受限制且为数字的结果
 
-- 遍历的数字的上界由 isLimit 决定
-  
-  - isLimit 为 true 的话上界为当前数字
-    
-  - isLimit 为 false 的话上界任取，可以为 9 
+- **:beers: 代码**
 
-- 遍历的数字的下界由 isNum 决定
-
-  - isNum 为 true, 下界为 0
-
-  -  isNum 为 false, 可以直接跳过计算结果 (跳过的话 isLimit 就为 false), 再计算不跳过的结果, 此时下界为 1 (跳过相当于为 0 )
-
-- 往下递归的时候参数的改变
-
-- mask 加上当前选的即可, 即 mask = mask | (1 << d)
-
-- isLimit 跟当前的 isLimit 和选的数相关, isLimit = isLimit && d == up (当且仅当目前受限并且选的仍为最大值时仍受限)
-
--  isNum 只要选了数字就为 true, 只有为 false 时并且直接跳过时才接着为 false
-
-根据题意决定要不要 isLimit 以及 isNum 即可, 板子：
+> c++
 
 ```c++
-function<int(int, int, bool, bool)> dfs = [&](int i, int mask, bool isLimit, bool isNum) -> int {
-   if (i == m) return isNum; // 到达末尾并且为数字, 返回 1
-   // 去掉另外两个参数的影响
-   if (!isLimit && isNum && cache[i][mask] != -1) return cache[i][mask];
-   int res = 0;
-   if (!isNum) { // 当前不是数字的话可以跳过, 跳过后就不受 n 的约束了
-       res = dfs(i + 1, mask, false, false);
-   }
-   int up = isLimit ? s[i] - '0' : 9; // 确定数字上界
-   // 下界跟 isNum 相关, 若是数字从 0 开始，否则从 1 开始
-   for (int d = 1 - isNum; d <= up; ++d) {
-       if ((mask >> d & 1) == 0) { // 当前数字没选过
-           res += dfs(i + 1, mask | (1 << d), isLimit && d == up, true);
-       }
-   }
-   if (!isLimit && isNum) { // 只记忆化不受制约并且是数字的结果
-       cache[i][mask] = res;
-   }
-   return res;
-};
+
 ```
 
-- [2376. 统计特殊整数](https://leetcode.cn/problems/count-special-integers/description/)
+> Go
 
+```go
 
+```
