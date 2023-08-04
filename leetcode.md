@@ -3,6 +3,8 @@
   - [:lollipop: 4. 寻找两个正序数组的中位数](#lollipop-4-寻找两个正序数组的中位数)
   - [:lollipop: 153. 寻找旋转排序数组中的最小值](#lollipop-153-寻找旋转排序数组中的最小值)
   - [:lollipop: 33. 搜索旋转排序数组](#lollipop-33-搜索旋转排序数组)
+  - [:lollipop: 2560. 打家劫舍 IV](#lollipop-2560-打家劫舍-iv)
+  - [:lollipop:](#lollipop)
 - [:wink: 栈](#wink-栈)
   - [:lollipop: 155. 最小栈](#lollipop-155-最小栈)
   - [:lollipop: 32. 最长有效括号](#lollipop-32-最长有效括号)
@@ -38,6 +40,7 @@
   - [:lollipop: ](#lollipop--2)
 - [:wink: 二叉树](#wink-二叉树)
   - [:lollipop: 112. 路径总和](#lollipop-112-路径总和)
+  - [:lollipop: 513. 找树左下角的值](#lollipop-513-找树左下角的值)
   - [:lollipop: ](#lollipop--3)
 - [:wink: 图](#wink-图)
   - [:lollipop: 785. 判断二分图](#lollipop-785-判断二分图)
@@ -301,6 +304,111 @@ func search(nums []int, target int) int {
     return -1
 }
 ```
+
+## :lollipop: [2560. 打家劫舍 IV](https://leetcode.cn/problems/house-robber-iv/description/?envType=list&envId=lTBtTopD)
+
+- :cherry_blossom: 思路
+
+最小化最大值，二分求解。确定是否可行可以用 DP 或贪心
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+// DP
+class Solution {
+public:
+    int minCapability(vector<int>& nums, int k) {
+        int n = nums.size();
+
+        auto check = [&](int target) {
+            vector<int> f(n + 2, 0);
+            for (int i = 0; i < n; ++i) {
+                if (nums[i] <= target) {
+                    f[i + 2] = max(1 + f[i], f[i + 1]);
+                } else {
+                    f[i + 2] = f[i + 1];
+                }
+            }
+            return f[n + 1] >= k;
+        };
+
+        int l = 0, r = *max_element(nums.begin(), nums.end());
+        while (l <= r) {
+            int mid = l + (r - l >> 1);
+            if (check(mid)) r = mid - 1;
+            else l = mid + 1;
+        }
+        return l;
+    }
+};
+// DP空优
+auto check = [&](int target) {
+    vector<int> f(n + 2, 0);
+    for (int i = 0; i < n; ++i) {
+        if (nums[i] <= target) {
+            f[i + 2] = max(1 + f[i], f[i + 1]);
+        } else {
+            f[i + 2] = f[i + 1];
+        }
+    }
+    return f[n + 1] >= k;
+};
+```
+
+> Go
+
+```go
+func minCapability(nums []int, k int) int {
+    var check func(int) bool
+    check = func(target int) bool {
+        f0, f1 := 0, 0
+        for _, num := range nums {
+            if num <= target {
+                f0, f1 = f1, max(f0 + 1, f1)
+            } else {
+                f0 = f1
+            }
+        }
+        return f1 >= k
+    }
+
+    l, r := 0, int(1e9)
+    for l <= r {
+        mid := l + ((r - l) >> 1)
+        if check(mid) {
+            r = mid - 1
+        } else {
+            l = mid + 1
+        }
+    }
+    return l
+}
+
+func max(a, b int) int { if b > a { return b }; return a }
+```
+
+
+## :lollipop: 
+
+- :cherry_blossom: 思路
+
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+
+```
+
+> Go
+
+```go
+
+```
+
 
 # :wink: 栈
 
@@ -3671,6 +3779,52 @@ func hasPathSum(root *TreeNode, targetSum int) bool {
         return diff == 0
     }
     return hasPathSum(root.Left, diff) || hasPathSum(root.Right, diff)
+}
+```
+
+## :lollipop: [513. 找树左下角的值](https://leetcode.cn/problems/find-bottom-left-tree-value/description/?envType=list&envId=Hyjay2QI)
+
+- :cherry_blossom: 思路
+
+自己就是常规的层序遍历, 先统计当前层的节点数目, 更新答案, 遍历当前层的节点, 并将下一层的节点加入队列
+
+更简单的方法为直接一路层序遍历下去, 先右子树入队再左子树入队, 那么最后一个节点就是答案
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+int findBottomLeftValue(TreeNode* root) {
+    queue<TreeNode*> q;
+    q.emplace(root);
+    TreeNode *last = root;
+    while (!q.empty()) {
+        last = q.front();
+        q.pop();
+        if (last->right) q.emplace(last->right);
+        if (last->left) q.emplace(last->left);
+    }
+    return last->val;
+}
+```
+
+> Go
+
+```go
+func findBottomLeftValue(root *TreeNode) int {
+    q := []*TreeNode{root}
+    last := root
+    for len(q) > 0 {
+        last, q = q[0], q[1:]
+        if last.Right != nil {
+            q = append(q, last.Right)
+        }
+        if last.Left != nil {
+            q = append(q, last.Left)
+        }
+    }
+    return last.Val
 }
 ```
 
