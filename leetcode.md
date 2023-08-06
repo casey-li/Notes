@@ -18,6 +18,7 @@
   - [:lollipop: 347. 前 K 个高频元素](#lollipop-347-前-k-个高频元素)
   - [:lollipop: 295. 数据流的中位数](#lollipop-295-数据流的中位数)
   - [:lollipop: 128. 最长连续序列](#lollipop-128-最长连续序列)
+  - [:lollipop: 438. 找到字符串中所有字母异位词](#lollipop-438-找到字符串中所有字母异位词)
   - [:lollipop: ](#lollipop--1)
 - [:wink: 贪心](#wink-贪心)
   - [:lollipop: 763. 划分字母区间](#lollipop-763-划分字母区间)
@@ -1478,6 +1479,51 @@ func longestConsecutive(nums []int) int {
 }
 
 func max(a, b int)int {if a < b {return b}; return a}
+```
+
+## :lollipop: [438. 找到字符串中所有字母异位词](https://leetcode.cn/problems/find-all-anagrams-in-a-string/description/)
+
+- :cherry_blossom: 思路
+
+虽然自己可以写出来，不过代码写的很乱
+
+本题相当于窗口大小固定的滑动窗口, 每次向右滑动 1, 减小右端点词频, 增加左端点词频
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+class Solution {
+public:
+    vector<int> findAnagrams(string s, string p) {
+        int n = s.size(), m = p.size();
+        if (n < m) return {};
+        vector<int> cnt(26, 0); // 保存每个字符缺几个
+        for (int i = 0; i < m; ++i) {
+            --cnt[s[i] - 'a'];
+            ++cnt[p[i] - 'a'];
+        }
+        int diff = 0; // 保存有几个字符不等
+        for (int &n : cnt) {
+            if (n != 0) ++diff;
+        }
+        vector<int> res;
+        if (diff == 0) res.emplace_back(0);
+        // 枚举终起点
+        for (int i = 0; i + m < n; ++i) {
+            // 区间右移, 减小右端点词频, 增加左端点词频
+            int times = --cnt[s[i + m] - 'a']; 
+            if (times == 0) --diff;
+            else if (times == -1) ++diff;
+            times = ++cnt[s[i] - 'a'];
+            if (times == 0) --diff;
+            else if (times == 1) ++diff;
+            if (diff == 0) res.emplace_back(i + 1);
+        }
+        return res;
+    }
+};
 ```
 
 ## :lollipop: []()
