@@ -46,9 +46,9 @@
 - [:wink: 图](#wink-图)
   - [:lollipop: 785. 判断二分图](#lollipop-785-判断二分图)
   - [:lollipop: 399. 除法求值](#lollipop-399-除法求值)
-  - [:lollipop: ](#lollipop--4)
+  - [:lollipop: 1976. 到达目的地的方案数](#lollipop-1976-到达目的地的方案数)
 - [:wink:](#wink)
-  - [:lollipop: ](#lollipop--5)
+  - [:lollipop: ](#lollipop--4)
 
 # :wink: 二分
 
@@ -4080,23 +4080,114 @@ public:
 };
 ```
 
-## :lollipop: []()
+## :lollipop: [1976. 到达目的地的方案数](https://leetcode.cn/problems/number-of-ways-to-arrive-at-destination/description/)
 
 - :cherry_blossom: 思路
 
+自己不会
+
+以 Dijkstra 为基础计算起点到其余点的最短路径; 在计算最短路径的过程中计算最短路的条数 f[i]
+
+- 若从 next 到 i 的路径更短 (`new_dis < dis`), 则 `f[i] = f[next]`
+
+- 若从 next 到 i 的路径长度等于当前已知的最短路 (`new_dis == dis`), 则 `f[i] += f[next])`
 
 - **:beers: 代码**
 
 > c++
 
 ```c++
+class Solution {
+public:
+    int countPaths(int n, vector<vector<int>>& roads) {
+        const int MOD = 1e9 + 7;
+        // 建图
+        vector<vector<long long>> graph(n, vector<long long>(n, LONG_LONG_MAX / 2));
+        for (auto &e : roads) {
+            int x = e[0], y = e[1], d = e[2];
+            graph[x][y] = graph[y][x] = d;
+        }
+        vector<long long> dis(n, LONG_LONG_MAX); // 到某个节点的最短路
+        dis[0] = 0;
+        vector<bool> visited(n, false);
 
+        // DP 保存距离最小的路径数目
+        vector<long long> f(n, 0);
+        f[0] = 1;
+
+        // Dijkstra, 算每个节点到其它节点的最短路
+        while (true) {
+            int next = -1;
+            for (int i = 0; i < n; ++i) {
+                if (!visited[i] && (next < 0 || dis[i] < dis[next])) {
+                    next = i;
+                }
+            }
+            if (next < 0) break;
+            visited[next] = true;
+            for (int i = 0; i < n; ++i) {
+                long long new_dis = dis[next] + graph[next][i];
+                if (new_dis < dis[i]) {
+                    f[i] = f[next];
+                    dis[i] = new_dis;
+                } else if (new_dis == dis[i] && next != i) {
+                    f[i] = (f[i] + f[next]) % MOD;
+                }
+            }
+        }
+        return f[n - 1];
+    }
+};
 ```
 
 > Go
 
 ```go
+func countPaths(n int, roads [][]int) int {
+    MOD := int64(1e9 + 7)
+    graph := make([][]int64, n)
+    for i := range graph {
+        graph[i] = make([]int64, n)
+        for j := range graph[i] {
+            graph[i][j] = math.MaxInt64 / 2
+        }
+    }
+    for _, e := range roads {
+        x, y, d := e[0], e[1], e[2]
+        graph[x][y], graph[y][x] = int64(d), int64(d)
+    }
 
+    dis := make([]int64, n)
+    for i := range dis {
+        dis[i] = math.MaxInt64
+    }
+    dis[0] = 0
+    visited := make([]bool, n)
+    f := make([]int64, n)
+    f[0] = 1
+    for {
+        next := -1
+        for i, vis := range visited {
+            if !vis && (next < 0 || dis[i] < dis[next]) {
+                next = i
+            }
+        }
+        if next < 0 {
+            break
+        }
+        visited[next] = true
+        for i := 0; i < n; i++ {
+            new_dis := dis[next] + graph[next][i];
+            if new_dis < dis[i] {
+                f[i] = f[next]
+                dis[i] = new_dis
+            } else if new_dis == dis[i] && i != next {
+                f[i] = (f[i] + f[next]) % MOD
+            }
+        }
+    }
+    return int(f[n - 1])
+}
 ```
 
 
