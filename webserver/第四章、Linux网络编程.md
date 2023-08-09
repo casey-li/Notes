@@ -1606,6 +1606,7 @@ if (curfd == lfd)
 # lesson32-34 UDP通信
 
 ## 一、UDP通信流程
+
 ``` mermaid
 graph TD
     A(client) --> B["socket()"]
