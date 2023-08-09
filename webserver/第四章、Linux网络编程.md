@@ -1607,23 +1607,7 @@ if (curfd == lfd)
 
 ## 一、UDP通信流程
 
-``` mermaid
-graph TD
-    A(client) --> B["socket()"]
-    B --> C["sendto()"]
-    C --> D["recvfrom()"]
-    D --> E["close()"]
-
-    AA("server") --> BB["socket()"]
-    BB --> CC["bind()"]
-    CC --> DD["recvfrom()"]
-    DD --> EE["sendto()"]
-    EE --> FF("close()")
-
-    C -->|"requst"| DD
-    EE --> |"response"|D
-
-```
+![](https://github.com/casey-li/Notes/blob/main/webserver/pic/%E7%AC%AC%E5%9B%9B%E7%AB%A0%E3%80%81Linux%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/UDP%E9%80%9A%E4%BF%A1%E6%B5%81%E7%A8%8B.png?raw=true)
 
 **`sendto(), recvfrom()` 函数**
 ```c++

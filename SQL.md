@@ -20,6 +20,9 @@
   - [十一章、事务和并发](#十一章事务和并发)
 - [第五部分：脱颖而出——数据类型、设计数据库、索引、保护](#第五部分脱颖而出数据类型设计数据库索引保护)
   - [十二章、数据类型](#十二章数据类型)
+  - [十三章、设计数据库](#十三章设计数据库)
+  - [十四章、效的索引](#十四章效的索引)
+  - [十五章、保护数据库](#十五章保护数据库)
 
 # 第一部分：基础——增删查改
 
@@ -4283,3 +4286,1379 @@ WHERE product_id = 1;
 3.  改：`JSON_SET`，注意其原理
 4.  删：`JSON_REMOVE`，原理同上
 
+## 十三章、设计数据库
+
+- **1、介绍**
+
+之前都是对已有数据库进行查询，这一章学习如何设计和创建数据库（以及表格）。
+
+设计一个结构良好的数据库是需要耗费不少时间和心力的，但这是十分必要的，设计良好的数据库可以快速地查询到想要的数据并且有很好的扩展性（很容易满足新的业务需求），相反，一个设计糟糕的数据库可能需要大量维护且查询又慢又麻烦
+
+- **2、数据建模**
+
+这一节讲数据建模，即为想要储存进数据库的数据建立模型的过程，其中包含4步：
+
+1.  Understand the requirements 理解需求
+
+第1步是理解和分析商业/业务需求，遗憾是很多程序员跳过了这一步就急着去设计数据库里的表和列了，实际上，这一步是最关键的一步，你对问题理解的越透彻，你才越容易找到最合适的解决方案，设计数据库也一样。所以，在动手创建表和列之前，要先完整了解你的业务需求，包括和产品经理、行业专家、从业人员甚至终端用户深入交流以及收集查阅与该问题领域相关的表、文件、应用程序、数据库，以及其他相关的任何信息或资料
+
+2. Build a conceptional model 概念建模
+
+当收集并理解了所有相关信息后，下一步就是为业务创建一个概念性的模型。这一步包括找出/识别/确认（identify）业务中的 实体/事物/概念（entities/things/concepts）以及它们之间的关系。概念模型只是这些概念的一个图形化表达，用来**与利益相关方交流和达成共识**
+
+3. Build a logical model 逻辑建模
+
+创建好概念模型后，转而创建数据模型（data model）或数据结构（data structure for storing data），即逻辑建模。这一步创建的是不依赖于具体数据库技术的抽象的数据模型，主要是确认所需要的**表和列**以及大体的数据类型
+
+4. Build a physical model 实体建模
+
+实体建模指的是将逻辑模型在具体某种DBMS上加以实现的过程，相比于逻辑模型，实体模型会确定更多细节，包括各表主键的设定，各列在某一DBMS下特定的具体的数据类型，是否有默认值，是否可为空，还包括储存过程和触发器等对象的创建。总之，实体模型是在某一特定DBMS下对数据模型非常具体的实现
+
+以上就是数据建模的流程
+
+- **3、概念模型**
+
+**案例**
+
+想要建一个销售在线课程的网站，用户可以注册一项或多项课程，课程可以有诸如 "frontend（前端）" "backend（后端）" 这样的标签
+
+对于一个线上课程网站来说，重要的概念/实体有哪些？很容易想到有学生（student）和课程（course）
+
+我们需要一种将实体及其关系可视化的方法，一种是实体关系图（Entity Relationship, ER），一种是统一建模语言（Unified Modeling Language，UML），这里我们用实体关系图（ER）
+
+步骤如下：
+
+1.  建立学生实体并确定相关属性，如姓名、电子邮件、注册时间
+2.  建立课程实体并确定相关属性，如课程名、价格、老师、标签
+3.  建立两个实体间的关系，暂时先用多对多连线（概念模型里只是画好连线，逻辑建模时再考虑连线的类型），加上 enrolls 标签表示两者间的关系是“学生→注册 →课程”
+
+![](https://pic1.zhimg.com/80/v2-aab2261da97eb2bb00a3bc6049a73e34_720w.webp)
+
+**注意**
+
+建模是个迭代过程，不可能第一次就建立完美模型，需要在理解需求和模型设计之间不断反复，多次调整。比如这里的学生属性，可以先确定个大概，之后可以根据需要再进行增删修改
+
+**小结**
+
+概念模型主要是从很高的视角来总览业务需求，识别业务中的实体/事物/概念以及他们彼此间的关系，通常这些实体包括人、事件、地点等
+
+这一步暂不考虑数据类型和具体的DBMS这样的技术细节，只是从概念上总揽全局，目的是和业务人员交流，保持理解一致，避免鸡同鸭讲
+
+
+- **4、逻辑模型**
+
+**案例**
+
+接前面线上课程网站的例子，对概念模型逻辑化的过程如下：
+
+  
+1. 细化实体间关系：
+
+考虑学生和课程的关系，首先这是一种多对多关系（通常意味着需要进一步细化），其次了解到业务上有如下需求：
+
+*   需要记录学生注册特定课程的日期
+*   课程价格是变化的，需要记录学生注册某门课程时的特定价格
+
+这些属性相对于学生和课程而言都是一对多关系，不管放在学生还是课程身上都不合适，所以，应该为学生和课程之间的关系，即 **注册课程的事件** 本身另外设立一个实体 enrollmemt，上面的注册日期和注册价格都应该是这个 enrollment 注册事件 的属性
+
+2. 调整字段并大体确定字段的数据类型：
+
+姓名（name）最好拆分为姓和名 (first\_name 和 last\_name)，同理，地址应该拆分为省、市、街道等等小的部分，这样方便查询。注意课程里的 tags 标签字段不是一个好的设计，之后讲归一化时再来处理  
+这里的数据类型只需确定个大概即可，如：是 string，float 而非 VARCHAR, DECIMAL。等到下一步实体模型里再来确定某个DBMS下的具体数据类型  
+
+![](https://pic3.zhimg.com/80/v2-cf76ce848e98d25d8b83a47ea1a29172_720w.webp)
+
+**小结**
+
+逻辑模型是在概念模型的基础上，在不依赖特定数据库系统的前提下确定数据结构，包括**细化实体间的关系（常常要为关系创造新的实体），调整字段设置，确定大体的数据类型。**总之，逻辑模型会基本确立数据库中的**表、列以及表间关系。**
+
+- **5、实体模型**
+
+实体模型就是逻辑模型在具体DBMS的实现，这里我们用MySQL实现前面线上课程网站的逻辑模型
+
+在 **Workbench-file-new model** 新建数据库模型，右键 edit 修改数据库名字为 school
+
+上方用 add diagram 作 EER 图，这里 EER 表示 Enhanced Entity Relationship 增强型实体关系图。为三个实体创建三张表，设定表名、字段、具体的数据类型、是否可为空（即是否为必须字段？），是否有默认值（主键设定之后再讲）。有几个注意点：
+
+*   表名：  
+
+之前逻辑模型里表名用单数，但这里表名用复数。这只是一种惯例，单复数都行，关键是要保持一致。  
+    
+*   字段名：  
+
+以 enrollments 表为例，注册事件的属性应该是 date日期 和 price价格 而非 enrollment\_date注册日期 和 enrollement\_price注册价格，不要将表名前缀加上字段上造成不必要的麻烦，保持精简（keep things simple）  
+    
+*   数据类型：  
+
+数据类型要根据业务需要来，例如，和业务人员确认后发现课程价格最高是999美元，所以 price价格 就可以设定为 DECIMAL(5,2)，之后如果需求变了了也可以随时更改，不要一上来就设定DECIMAL(9,2)，浪费磁盘，注意尽可能节省空间（keep things small）
+
+![](https://pic3.zhimg.com/80/v2-fc68cc007e5e18cfcd003155a1ed1d8a_720w.webp)
+
+**小结**
+
+实体模型是逻辑模型在特定DBMS上的实现，主要是一些技术上的细化，包括确定字段具体数据类型和性质（能否为空等），设置主键等
+
+- **6、主键**
+
+主键就是能唯一标识表中每条记录的字段
+
+**设定 students 表的主键：**
+
+不管是 first\_name 还是 last\_name 都不能唯一标识每条记录，它们两个合起来作为联合主键也不行，因为两个人全名相同也是可能的（都叫 Tom Smith）。Email 也不适合作主键，首先太长了，之后需要作为外键复制到其他表会很浪费资源，而且 Email 也可能改变。
+
+总之**主键要短，可唯一标识记录，且永不改变**。我们增加一个 student\_id 作为主键，类型设为 INT（最大可表示2亿，一般足够了，但记得总是根据具体的需求决定），设为主键后自动变为不可为空，另外还要设定 AI（Auto Incremental）自动递增，这样会方便许多，不要担心主键唯一性的问题，最后我们把主键拖到表的第一列让表的结构看起来更清晰
+
+**设定 courses 表的主键：**
+
+增加一个 course\_id 作为主键，其它和 student\_id 一样
+
+- **7、外键**
+
+注意 enrollments 表的特殊性，它可以说是 students 和 courses 的衍生表，先要有学生和课程，才能有 学生注册课程 这一事件，后者表述的是前两者的关系，学生和课程是因，注册课程这一事件是果
+
+MySQL里可以通过一对一或一对多两种连线表达这种先后关系/因果关系并自动建立外键，其中学生和课程被称作父表或主键表，注册事件被称作子表或外键表，外键是子表里对父表主键的引用
+
+几个细节：
+
+*   连线时记不得先连主表还是子表可以看状态栏的提示
+*   MySQL自动添加的外键会带父表前缀，没必要，建议去掉
+
+可以看到，相对于逻辑模型，实体模型有更多实现细节，包括设置字段具体类型和性质以及根据表间关系确定主键和外键
+
+现在，根据表间关系给 enrollments 表添加了 student\_id 和 course\_id 两个外键，enrollments 的主键设置有两个选择：
+
+1.  将这两个外键作为联合主键
+2.  另外设置一个单独的主键 enrollment\_id
+
+两种选择各有优缺点，以联合主键为例：
+
+*   好处是可以避免重复的注册记录，即可以防止同一个学生重复注册同一门课程，因为主键（这里是联合主键）是唯一不可重复的，这可以防止一些不合理的数据输入
+*   坏处是如果 enrollments 未来有新的子表，就需要复制两个字段（而不是 enrollment\_id 一个字段）作为外键，这也不一定是很大的麻烦，要根据数据量以及子表是否还有子表等情况来考虑，在一定情况下可能会造成不必要冗余和麻烦
+
+但目前来说，没有为 enrollments 建立子表的需求，**永远不要为未来不知道会不会出现的需求进行设计开发**，如果之后需要的话也可以通过脚本修改表结构，也不会很麻烦，所以目前的情况，用联合主键就好了。在 enrollments 表里把两个外键的黄钥匙都点亮，即成为联合主键
+
+![](https://pic1.zhimg.com/80/v2-e708ee7d0eec0615a4e21034913f9c9c_720w.webp)
+
+- **8、外键约束**
+
+有外键时，需要设置约束以防止数据损坏/污染（不一致）
+
+在 enrollements 表设计模式里，打开 Foreign Keys 标签页，可以看到两个外键，以 `fk_子表_父表` 的方式命名，名称后可能有数字，是MySQL为了防止外键与其他外键重名自动添加的，这里没必要，可去掉。右边 Foreign Key Options 可分别选择当父表里的主键被修改或删除（Update / Delete）时，子表里的外键如何反应，有三种选项：
+
+1.  CASCADE:  
+
+瀑布/串联/级联，表示随着主键改变而改变，如主键某学生的 student\_id 从1变成2，则该学生的所有注册课程记录的 student\_id 也会全部变为2 （注意主键一般也最好是永远不要变的，这里讨论的是特殊情况）  
+    
+2.  RESTRICT / NO ACTION:  
+
+两者等效，作用都是禁止更改或删除主键。如：对于有过注册记录的课程，除非先删除该课程的注册购买记录，不然不能在 courses表 里删除该课程的信息  
+    
+3.  SET NULL:  
+
+就是当主键更改或删除时，使得相应的外键变为空，这样的子表记录就没有对应的主键和对应的父表记录了（no parent），被称为孤儿记录（orphan record），这是垃圾数据，让我们不知道是谁注册的课程或不知道注册的是什么课程，一般不用，只在极其特殊的情况可能有用。  
+    
+**经验法则**
+
+通常对于 UPDATE, 设置为 CASCADE 级联，随之改变
+
+对于 DELETE，看情况而定，可能设置为 CASCADE 随之删除 也可能设置为 RESTRICT / NO ACTION 禁止删除。不要死板，**永远按照业务/商业需求来选择**，这也正是为什么之前强调“理解业务需求”是最重要的一步。比如我们课程注册记录里包含购买价格信息，则应该禁止删除，否则之后想统计某课或某时间段收入信息就会缺数据，相反如果只是个用户登录并设定一系列提醒的软件，可能允许用户注销并删除所有提醒就没什么大不了的，但万一我们需要这些提醒记录来进行统计，那又应该设置为禁止删除，总之一定要根据具体业务需求来
+
+- **9、数据库规范化/正规化/归一化**
+
+正式建立数据库前我们先要检查并确定现在的设计是最优化的（optimal），关键是没有任何冗余或重复。重复数据会占用更多空间并且使得增删查改的操作复杂化，比如，如果用户名在多处出现的话，一旦更改用户名就要到多处更改否则就会使得数据不一致，出现无效数据。
+
+为了防止重复冗余，需要遵循数据库设计的7大规则或者说7大范式，每一条都是建立在你已经遵循了前一条的基础上。实际上，99%的数据库之需要遵循**前三大范式**就够了，其他几个并没有那么重要。接下来将依次讲解前三大范式并给出可操作的建议，让你能够在不死记硬背这些规则的情况下轻松设计出归一化的数据库
+
+补充：维基百科——数据库规范化
+
+> 数据库规范化，又称正规化、标准化，是数据库设计的一系列原理和技术，**以减少数据库中数据冗余，增进数据的一致性。**关系模型的发明者埃德加·科德最早提出这一概念，并于1970年代初定义了第一范式、第二范式和第三范式的概念，还与Raymond F. Boyce于1974年共同定义了第三范式的改进范式——BC范式。  
+> 除外还包括针对多值依赖的第四范式，连接依赖的第五范式、DK范式和第六范式。  
+> 现在数据库设计最多满足3NF，普遍认为范式过高，虽然具有对数据关系更好的约束性，但也导致数据关系表增加而令数据库IO更易繁忙，原来交由数据库处理的关系约束现更多在数据库使用程序中完成。
+
+- **10、第一范式**
+
+> Each cell should have a single value and we cannot have repeated columns.  
+> 每个单元格都应该是单一值并且不能有重复的列
+
+courses 里的 tags 标签列就不符合第一范式。tags 列用逗号隔开多个标签，不是单一值。若将 tags 分割成多列，每个标签一列呢？问题是我们不知道到底有多少标签，每次出现新标签就要改动表结构，这样的设计很糟糕。这也正是范式1要求没有重复列的原因
+
+所以我们另外单独创建一个 tags 表，设置两个字段：
+
+1.  tag\_id TINYINT 如果标签是终端用户设定的，那数量就可能会迅速增长，但这里假定标签是管理员设定的，最多可能五六十个，那 TINYINT 足够了
+2.  name VARCHAR(50)  
+
+- **11、链接表**
+
+尝试建立 courses 和 tags 之间的联系，发现两者是多对多关系（MySQL里只有一对一和一对多，没有多对多），这说明两者的关系需要进一步细化，我们添加一个 course\_tags 表来专门描述两者间的关系，记录每一对课程和标签的组合，这个中间表或者说**链表（link table）**同时是 courses 和 tags 的子表，与这两个父表均为一对多的关系，建立两条一对多连线后 MySql 自动给 course\_tags 表增加了两个外键 course\_id 和 tag\_id（注意去掉自动添加的表前缀），两者构成了 course\_tags 表 的联合主键
+
+![](https://pic4.zhimg.com/80/v2-b5952a087838ce71edcc29aa8cd83043_720w.webp)
+
+通过 course\_tags 细化 courses 和 tags 的关系 与 之前通过 enrollments 表细化 students 和 courses 的关系一样，都是**通过建立链表细化多对多关系**，这是很常用的一种方法，有时链表只包含引用的两个外键，如 course\_tags 表，有时链表还包含其它信息，如 enrollments 表还包含注册时间和注册费用
+
+至此，删除掉 courses 里的 tags 列，我们的数据库就符合第一范式了，所有列都是单一值也没有诸如tag1，tag2这样的重复列，所有标签都保存在独立的 tags 表里拥有唯一记录。如果像之前那样标签以逗号分隔保存在 courses 表中，同一个标签如 "frontend" 会多次出现，如果要将这个标签改名为 "front-end" 就会多出很多不必要的锁定操作，修改标签却要锁定 courses 表里的记录，这本身就很不合理，tags 表才该是唯一储存标签的地方，而tags 里的标签条目才是修改标签时唯一应该被锁定的条目
+
+- **12、第二范式**
+
+**第二范式的人话解释：**
+
+> Every table should describe one entity, and every column in that table should describe that entity.  
+> 每个表都应该是单一功能的/应该表示一个实体类型，这个表的所有字段都是用来描述这个实体的
+
+**补充：第二范式的维基百科**
+
+> 第二范式（2NF）是数据库正规化所使用的正规形式。规则是要求资料表里的所有资料都要和该资料表的键（主键与候选键）有**完全依赖**关系：每个非键属性必须独立于任意一个候选键的任意一部分属性。如果有哪些资料只和一个键的**一部分有关**的话，就得把它们**独立**出来变成另一个**资料表。(查询表)**
+
+
+以 courses 表为例，course\_id、title、price 都完全是属于课程的属性，放在 courses 表里没问题，但注册时间 enrollment\_date 放在 courses 表里就不合适，因为一个课程可以被多个学生注册所以有多个注册时间，同样的注册时间也不应该是 students 表的属性，因为一个学生可以注册多门课所以可以有多个注册时间，注册时间应该是属于“注册事件”的属性，所以应该另外建个 enrollments 表，放在该表里。
+
+同理，对于订单表 orders 来说，order\_id 和 date 应该是其中的属性，但 customer 就不是，虽然每个订单确实有对应的顾客，但顾客信息可能在不同订单里重复，这会占用多余的储存空间并使得修改变得困难，应该单独建一个顾客表来储存顾客信息，订单表里用顾客id而非顾客名来引用顾客表，当然，顾客id还是会重复，但4字节的数字比字符串占用的空间小多了，这已经是让重复最小化了
+
+总之，第一范式是要求单一值和无重复列，这里第二范式是要求表中所有列都只能是完全描述该表所代表的实体的属性，不属于该实体的、在记录中可重复的属性（如订单表里的顾客信息），应该另外放在描述相应实体的表里（顾客表）
+
+以我们这个模型为例，courses 里的 instructors 虽然是单一值符合第一范式却不符合第二范式，因为老师不是完全属于课程的属性，老师在不同课程中可能重复。所以，另外建立 instructrors 表作为父表，包含 instructor\_id 和 name 字段，其中 instructor\_id 为主键，一对多链接 courses 表后自动引进 courses 表作为外键，删除原先的 instructor 列。还有注意设置外键约束，UPDATE 设置为 CASCADE，DELETE 设置为 NO ACTION，也就是 instructor\_id 会随着 instructors 表更改，但不允许在某教师有课程的情况下删除该教师的信息
+
+至此，我们的数据库已符合第二范式。
+
+![](https://pic3.zhimg.com/80/v2-e7296e49a86ea8d06257701f14ba88ea_720w.webp)
+
+- **13、第三范式**
+
+**第三范式的人话解释：**
+
+> A column in a table should not be derived from other columns.  
+> 一个表中的字段不应该是由表中其他字段推导而来
+
+例如，假设 invoices 发票表里现在有三个字段：发票额、支付额 和 余额，第三个可以由前两个相减得到所以不符合 3NF，每次前两者更新第三个就要随之更新，假设没有这样做，出现了 100，40，80 这样不一致的数据，就不知道到底该相信哪个了，余额到底是 80 还是 100-40=60？
+
+同理，如果表里已经有 first\_name 和 last\_name 就不该有 full\_name，因为第三者总是可以由前两者合并得到
+
+不管是 余额balance 还是 全名fullname，都是一种冗余，应该删除
+
+**补充：第三范式的维基百科**
+
+> 第三范式（3NF）是数据库正规化所使用的正规形式，要求所有非主键属性都只和候选键有相关性，也就是说非主键属性之间应该是独立无关的。  
+> 如果再对第三范式做进一步加强就成了BC正规化，强调的重点在于“资料间的关系是奠基在主键上、以整个主键为考量、而且除了主键之外不考虑其他因素”。
+
+**总结**
+
+第三范式和前两范式一样，**都是为了减少数据重复和冗余，增强数据的一致性和完整性（data integrity）**
+
+感觉三大范式可以用三个关键词总结：**单一值、单一功能、独立**
+
+- **14、我的实用建议**
+
+除非需要考试，不然没必要记忆和死板套用三大范式，实际工作中只需要专注于减少数据的重复性即可，比如发现一个 name 字段下出现的是一些重复的名字而不是重复的外键（如某种id），那就说明设计还不够归一化，**具体违反哪条范式并不重要，关键是专注于避免重复性**
+
+**例子**
+
+假设一个顾客表里每条都是一个顾客信息，有名字年龄生日性别还有收货地址，如果想让一个顾客可以有多条收货地址应该怎么办？
+
+如果仍然把收货地址放在这个顾客表，就要为了保存一个顾客的多条地址而将这个顾客的所有信息复制多条，这是一种没必要的重复和冗余
+
+我们先从概念和逻辑模型上思考，这里有两个关键实体，顾客 和 地址，它们是一对多关系，然后再细化为实体模型，应该建立两张表，顾客表保存顾客其他信息，地址表（实际上是顾客地址关系表）只保存顾客id和地址两个字段，这样就将重复性降到了最低
+
+**小结**
+
+总之，一定要先从概念和逻辑模型去考虑实体和关系，再逐步细化，过程中专注于避免数据的重复冗余以及保证数据的一致性和完整性，一定不要一上来就建表，这样几乎总是得到糟糕由混乱的数据库设计
+
+**注意**
+
+上面的例子以一个顾客有多个收货地址为前提，但如果一个顾客只有一个收货地址，那用一张表就足够了，用两张表是没必要的，所以关键是理解业务需求，总是按照业务需求来设计，这也引入了下一节内容：不要对全宇宙建模！
+
+- **15、不要对什么都建模**
+
+设计数据库时总是考虑当前的业务需求，不要试图包罗万象，总有开发人员会考虑各种未来可能出现的需求，实际上大部分那些需求都从未发生，反而使得数据库增加了很多没必要的复杂性，增加了查询的难度并拖慢了执行效率
+
+总之，尽可能保持简洁，**简洁才是终极哲学（Simplicity is the ultimate sophistication）**，无论你对未来的预测有多好，总会有意料之外的需求出现，总有一天你会写脚本改数据库甚至进行数据迁移，这是避免不了的，当前只需考虑如何最好地满足目前的需求就好了，不要企图对全宇宙建模
+
+- **16、正向搭建数据库**
+
+通过模型正向搭建数据库：workbench 菜单的 Database 选项 → Forward Engineer 正向搭建数据库
+
+依据向导保持默认不断点下一步就好了，不要更改，除非你知道你在做什么
+
+有一步可以选择 除了创建数据库中的表 是否还要创建 储存程序、触发器、事务和用户对象，而且表格可以筛选到底要创建哪些表
+
+最后一步会展示对应的SQL代码，里面有创建 school 数据库（schema?）以及各表的SQL代码，之后会详细讲。可以选择保存代码为文件（以保存到仓库中）或者复制到剪贴板然后到 workbench 查询窗口里以脚本方式运行，这里我们直接运行，返回 local instance 链接刷新界面就可以看到新的 school 数据库和里面的6张表了
+
+- **17、使用数据库同步模型**
+
+之后可能会修改数据库结构，比如更改某些表中字段的数据类型或增加字段之类，如果只是自己一个人用的一个本地数据库，可以直接打开对应表的设计模式并点击更改即可，但如果是在团队中工作通常不是这样。
+
+在中大型团队中，我们通常有**多个服务器来模拟各种环境**，其中有：  
+
+1. 生产环境（production environment）：用户真正访问应用和数据库的地方  
+2. 模拟环境（staging environment）：与生产环境十分接近  
+3. 测试环境（testing environment）：存粹用来做测试的  
+4. 开发环境（development environment）
+
+每次需要对数据库做修改时我们需要复制相同的修改到不同的环境以保持数据的一致性
+
+所以不能是在设计模式中直接点击修改，相反，是在之前的实体模型（EER Diagram）中修改并使用菜单中的 Database → Synchronize Model，其中有一步可以选择链接，这里我们选择本地连接 local\_instance，但如果是在团队中可能需要选择测试环境、模拟环境甚至开发环境的链接以对相应环境中的数据库执行更改，MySQL会自动检测到需要修改的是 school 数据库并提示要修改的表，例如我们想在 enrollments 中加上一个 coupons 折扣券 字段，会提示将影响的表除了 enrollments 还有 courses 等表，因为这些表与要修改的表是相互关联的，之后的 SQL 的语句会先暂时删除相关外键以消除这些联系，对目标表做出相应更改（增加 coupons 字段）后再重建这些联系，同样的，我们可以把这些代码保存起来并上传到仓库，就可以在不同环境执行相同修改以保持一致性
+
+- **18、反向搭建数据库**
+
+如果要修改没有实体模型的数据库，第一次可以先逆向工程（Reverse Engineering）建立模型，之后每次就可以在该模型上修改了
+
+例如，我们要修改 sql\_store ，应如下操作：
+
+1.  关闭当前 school 数据库的 Model，不然之后的逆向工程结果会添加到当前模型上，最好是每个数据库都有一个单独的模型，除非数据库间相互关联否者不要在一个模型中处理多个数据库  
+    
+2.  Database → Reverse Engineer，可以选择目标数据库，如上说所，除非数据库相互关联，否者最好一次只逆向工程一个数据库，让每个数据库都有一个单独的模型。  
+    
+3.  同样，可以筛选要哪些表  
+    
+
+在反向搭建出的模型中，可以更好的看清和理解数据库的结构设计，可以修改表结构，还可以发现问题，如在 sql\_store 数据库的模型中，可以发现有一个 order\_items\_notes 表并未与任何表相联，这样里面的 order\_id 就可能输入无效值，相反如果是建立了链接的表，MySQL会自动验证数据的一致性/完整性/有效性（integrity），只允许子表中添加父表中存在的id值
+
+**小结**
+
+第一次修改无模型的数据库可以使用MySQL自带的逆向工程，之后就可以用这个模型查看表结构、检查问题和进行修改
+
+- **19、创建和删除数据库**
+
+用 workbench 的向导来创建和修改数据库能够提高效率，但作为 DBA (Database Administrator 数据库管理员)，你必须要能理解并审核相关代码，确保其不会对数据库有不利影响，而且也有能力手动写代码完成创建和修改数据库的操作，可以不依赖工具。
+
+```sql
+CREATE DATABASE IF NOT EXISTS sql_store2;
+DROP DATABASE IF EXISTS sql_store2
+```
+
+- **20、创建表**
+
+以在 sql\_store2 中建表 customers 为例，注意创建表之前还是要先用 USE 选择数据库，不然不知道你是要在哪个数据库中创建表
+
+```sql
+USE sql_store2;
+
+DROP TABLE IF EXISTS customers;
+CREAT TABLE customers
+-- 没有就创建，有的话就推倒重建
+
+-- 或
+CREATE TABLE IF NOT EXISTS customers
+-- 没有就创建，有的话就不做改变
+
+(
+    -- 只挑选几个字段来建立
+    customer_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL, 
+    points INT NOT NULL DEFAULT 0,
+    email VARCHAR(255) NOT NULL UNIQUE
+    -- UNIQUE 确保 email 值唯一，即每个用户的 email 必须不一样
+)
+```
+
+**注意**
+
+左侧栏导航窗口选择某表中的列时，下面的 Object Info 可以查看列的数据类型
+
+**小结**
+
+*   如上，创建对象（不管是数据库还是表）有两种方式，`DROP …… IF EXIXTS ……； CREAT ……` 和 `CREAT …… IF NOT EXISTS ……`，注意两种方式的区别在于，当原对象存在时，前者是推倒重建，后者是保持原状放弃创建  
+    
+*   括号中设置列的方式为 `列名 数据类型 各种列性质`，列间逗号分隔，常用的列性质有 `PRIMARY KEY` `NOT NULL` `DEFAULT 0` `UNIQUE`  
+    
+
+- **21、更改表**
+
+这节学习如何更改已存在的表，包括增删列和修改列类型和属性
+```sql
+USE sql_store2;
+ALTER TABLE customers
+    ADD [COLUMN] last_name VARCHAR(50) NOT NULL [AFTER first_name],
+    ADD city VARCHAR(50) NOT NULL,
+    MODIFY [COLUMN] first_name VARCHAR(60) DEFAULT '',
+    DROP [COLUMN] points;
+```
+
+COLUMN 是可选的，有的人喜欢加上以增加可读性
+
+AFTER first\_name 是可选的，不加的话默认将新列添加到最后一列
+
+MODIFY 修改已有列时其实感觉好像是是重置该列（= DROP + ADD），所以注意要列出该列全部类型和属性信息，如上例中将 first\_name 修改为 VARCHAR(60) 类型并将默认值修改为空字符串''，但忘了加 NOT NULL，刷新后发现 first\_name 不再有 NOT NULL 属性
+
+列名最好不要有空格，但如果有的话可用反引号包裹，如 \`last name\`
+
+**注意**
+
+修改表永远不要直接在生产环境中进行，要首先在测试环境进行，确保没有错误和不良影响后再到生产环境进行修改
+
+- **22、创建关系**
+
+在新的 store2 数据库中创建了 customers 表，这里我们接着创建 orders 表，并在表中添加 customer\_id 外键来建立表间关系
+
+```sql
+CREATE DATABASE IF NOT EXISTS sql_store2;
+USE sql_store2;
+DROP TABLE IF EXISTS customers;
+CREATE TABLE customers
+(……);  
+-- 在Workbench里可点击加减号来展开或收起代码块
+
+DROP TABLE IF EXISTS orders;
+CREATE TABLE orders
+(
+    order_id    INT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    order_date  DATE NOT NULL,
+    -- 在添加完所有列之后添加外键
+    FOREIGN KEY fk_orders_customers (customer_id)
+        REFERENCES customers (customer_id)
+        ON UPDATE CASCADE
+        -- 也有人主张用 NO ACTION / RESTRICT
+        ON DELETE NO ACTION
+        -- 禁止删除有订单的顾客
+)
+```
+
+**外键名的命名习惯：**
+
+`fk（foreign key 的缩写）_子表名_父表名`
+
+**设置外键的语法结构：**
+```sql
+FOREIGN KEY 外键名 (外键字段)
+    REFERENCES 父表 (主键字段)
+    -- 设置外键约束：
+    ON UPDATE CASCADE
+    ON DELETE NO ACTION
+```
+
+**关于外键约束**
+
+ON DELETE 设置为 NO ACTION / RESTRICT 可以防止删除有的订单的顾客，这没什么问题；而对于 ON UPDATE，也有人主张同样应该设为 NO ACTION / RESTRICT，因为主键是永远不应该被更改的，理论上Mosh支持这个观点，但实际世界并不完美，由于意外或系统错误等原因，主键是有可能改变的，所以Mosh一般设置为CASCADE，让外键随着主键的更改而更改，但你要设置为 NO ACTION / RESTRICT 也同样有道理。另外，想查看外键约束的可选项以及想通过菜单选择来更改外键约束的话，可以打开某列的设计模式，在 Foreign Keys 标签页里进行选择
+
+**表间依赖**
+
+还有注意一点，运行以上SQL文件从头创建 sql\_store2数据库以及customers和orders两张表时，第一次运行没问题，但要再次运行的化会报以下错误：
+
+```sql
+/* Error Code: 1217. Cannot delete or update a parent row: 
+a foreign key constraint fails*/
+```
+
+这是因为建立主外键关系后， customers 现在和 orders 是父子表，orders 表**依赖于** customers 表，所以必须先删除 orders 表才能删除 customers 表，所以应该把 orders 表的 DROP 语句放到最前面：
+
+```sql
+CREATE DATABASE IF NOT EXISTS sql_store2;
+USE sql_store2;
+-- 删表时先删子表
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS customers;
+
+-- 建表时先建父表（我觉得应该是）
+CREATE TABLE customers
+(……);
+
+CREATE TABLE orders
+(……);
+```
+
+这样运行再多次也没问题了，总是可以从头建立sql\_store2数据库和customers、orders两张表 
+
+- **23、更改主键和外键约束**
+
+这一节学习如何在已经存在的表间创建和删除关系，还是用 `ALTER TABLE` 语句 + `ADD`、`DROP` 关键词，只不过这里增删的是不是列而是外键：
+
+```sql
+USE sql_store2;
+ALTER TABLE orders 
+    DROP FOREIGN KEY fk_orders_customers,  -- orders_ibfk_1
+    ADD FOREIGN KEY fk_orders_customers (customer_id)
+        REFERENCES customers (customer_id)
+        ON UPDATE CASCADE
+        ON DELETE NO ACTION;
+```
+
+另外也可以通过类似的 ALTER TABLE 语句增删主键：
+
+```sql
+USE sql_store2;
+ALTER TABLE orders
+    ADD PRIMARY KEY (order_id,……,……),
+    -- 可设置多个主键，在括号内用逗号隔开
+    DROP PRIMARY KEY;
+    -- 删除主键不用声明，会直接删除所有主键
+```
+
+另外，像增删主键这种既可以用菜单点击也可以用代码运行实现的操作（Workbench里这种操作相当多了），当忘记相关SQL代码写法时，可以通过菜单点击方式操作然后在 Review the SQL script 那一步看一看，就知道代码怎么写的了
+
+- **24、字符集和排序规则**
+
+字符是以数字序列的形式储存于电脑中的，字符集是数字序列与字符相互转换的字典，不同的字符集支持不同的字符范围，有些支持拉美语言字符，有些也支持亚洲语言字符，有些支持全世界所有字符，查看MySQL支持的所有字符集：
+
+> SHOW CHARSET;
+
+其中 armscii8 支持亚美尼亚语，big5 支持繁体中文，gb2312 和 gbk 支持简体中文，而 utf-8支持全世界的语言，**utf-8 也是MySQL自版本5之后的默认字符集**。
+
+还可以看到字符集描述，默认排序规则，最大长度
+
+排序规则（collation n. 校对，整理，排序规则）指的是某语言内字符的排序方式，utf-8 的默认排序规则是 utf8\_general\_ci，其中 ci 表示 case insensitive 大小写不敏感，即MySQL在排序时不会区分大小写，这在大部分时候都是适用的，比如用户输入名字的时候大小写不固定，我们希望只按照字符顺序而不管大小写来对名字进行排序。总之，99.9% 的情况下都不需要更改默认排序规则。
+
+最大长度指的是对该字符集来说，给每个字符预留的最大字节数，如 latin1 是 1 字节，utf-8 就是 3 Byte，前面说过，**在utf-8里，拉丁字符使用 1 字节，欧洲和中东字符使用 2 字节，亚洲语言的字符使用 3 字节，所以 utf-8 给每个字符预留 3 字节**
+
+对于字符集来说，大部分时候用默认的 utf-8 就行了。但有时，我们可以通过更改字符集来减少空间占用，例如，我们某个特定的应用（对应的数据库）/特定表/特定列是只能输入英文字符的，那如果将该列的字符集从 utf-8 改为 latin1，占用空间就会缩小到原来的 1/3，以字段类型为 CHAR(10)（固定预留10个字符）且有 1 百万条记录为例，占用空间就会从约 30MB 减到 10MB。接下来讲如何用菜单和代码方式更改库/表/列的字符集。
+
+**菜单方式更改字符集**
+
+右键 sql\_store2 数据库，点击 Schema Inspector，可以查看整个数据库以及各表各列的字符集和排序规则，Schema Inspector 也能查看该数据库的主键外键、视图、触发器、储存程序、事务、函数等各方面情况
+
+要修改库或者表和列的字符集，直接点开库或者表的设计模式（扳手按钮）在里面选择更改即可，一般我们会让表和列的字符集和整个库保持一致，毕竟一个应用要不然是国际化的要不然就不是。
+
+**代码方式更改字符集**
+
+总的来说就是将设置字符集的语句 `CHARACTER SET 字符集名` 加在之前那些创建/更改数据库/表/列语句的合适位置即可
+
+1.  在创建或修改数据库时设置或修改数据库的字符集
+
+```sql
+CREATE/ALTER DATABASE db_name 
+    CHARACTER SET latin1
+```
+
+2. 在创建或修改表时设置或修改表的字符集
+```sql
+CREATE/ALTER TABLE table1
+    (……) 
+    CHARACTER SET latin1
+```
+
+3. 在创建或修改表时设置或修改列的字符集
+
+就是将 `CHARACTER SET latin1` 加在列设置语句的**字段类型和字段性质之间**
+
+```sql
+CREATE TABLE IF NOT EXISTS customers
+(
+  customer_id INT PRIMARY KEY AUTO_INCREMENT,
+  first_name VARCHAR(50) CHARACTER SET latin1 NOT NULL, 
+  points INT NOT NULL DEFAULT 0,
+  email VARCHAR(255) NOT NULL UNIQUE
+)
+
+-- 或
+USE sql_store2;
+ALTER TABLE customers
+  MODIFY first_name VARCHAR(50) CHARACTER SET latin1 NOT NULL,
+  ADD    last_name  VARCHAR(50) CHARACTER SET latin1 NOT NULL AFTER first_name;
+```
+
+- **25、存储引擎**
+
+在MySQL中我们有若干种储存引擎，储存引擎决定了我们数据的**储存方式以及可用的功能**
+
+展示可用的储存引擎：
+
+> SHOW ENGINES;
+
+储存引擎有很多，我们真正需要知道只有两个：MyISAM 和 InnoDB
+
+MyISAM 是曾经很流行的引擎，但自 MySQL5.5 之后，**默认引擎就改为 InnoDB了，InnoDB支持更多的功能特性，包括事务、外键等等，所以最好使用 InnoDB**
+
+引擎是表层级的设置，每个表都可以设置不同的引擎（虽然这没必要）
+
+外键是十分重要的，它可以增加引用一致性/完整性（referential integrity），如果我们有一个老数据库的引擎是MyISAM，我们想要给它设置外键，就必须要将其引擎升级为InnoDB，可以在表的设计模式里选择更改，也可以用修改表的代码：
+
+```sql
+ALTER TABLE customers
+ENGINE = InnoDB;
+```
+
+**注意**
+
+改变引擎是一个代价极高（expensive）的操作，它会重建整个表，在此期间无法方法访问数据。所以，除非有特殊的理由，不然不要在生产环境中改变储存引擎
+
+## 十四章、效的索引
+
+- **1、介绍**
+
+这一章我们来看提高性能的索引，索引对大型和高并发数据库非常有用，因为它可以显著提升查询的速度
+
+这一章我们将学习关于索引的一切，它们是如何工作的，以及我们如何创造索引来提升查询速度，学习和理解这一章对于程序员和数据库管理员十分重要
+
+**准备**
+
+打开 load\_1000\_customers.sql 并运行，该文件会向 sql\_store 库的 customers 表插入上千条记录，这样我们就能看出索引对查询效率的影响
+
+- **2、索引**
+
+**原理和作用**
+
+以寻找所在州（state）为 'CA' 的顾客为例，如果没索引，MySQL 就必须扫描筛选所有记录。索引，就好比书籍最后的那些关键词索引一样，按字母排序，这样就能按字母迅速找到需要的关键词所在的页数，类似的，对 state 字段建立索引时，其实就是把 state 列单独拿出来分类排序并建立与原表顾客记录的对应关系，然后就可以通过该索引迅速找到所在州为 'CA' 的顾客
+
+另一方面，**索引会比原表小得多，通常能够储存在内存中，而从内存读取数据总是比从硬盘读取快多了，这也会提升查询速度**
+
+如果数据量比较小，几百几千这种，没必要用索引，但如果是上百万的数据量，有无索引对查询效率的影响就很大了
+
+**但建立索引也是有代价的，首先索引会占用内存，其次它会降低写入速度，因为每次修改数据时都会自动重建索引。所以不要对整个表建立索引，而只是针对关键的查询建立索引**
+
+**简化**
+
+严格来讲，应该用二叉树来描述索引，但只是为了学习如何操作索引的话没必要理解二叉树，所以这节课简化为用表格来展示索引以降低理解难度
+
+- **3、创建索引**
+
+**案例**
+
+接着上面的例子，假设查询 'CA' 的顾客，为了查看查询操作的详细信息，前面加上 `EXPLAIN` 关键字
+
+注意这里只选择 customer\_id 是有原因的，之后会解释
+
+```sql
+EXPLAIN SELECT customer_id 
+FROM customers WHERE state = 'CA';
+```
+
+得到很多信息，目前我们只关注 type 和 rows
+
+type 是 ALL 而 rows 是 1010 行，说明在没有索引的情况下，MySQL扫描了所有的记录。可用下面的语句确认customers表总共就是1010条记录
+```sql
+SELECT COUNT(*) FROM customers;
+-- 1010
+```
+
+现在创建索引，索引名习惯以idx或ix做前缀，后面的名字最好有意义，不要别取 idx\_1、idx\_2 这种没人知道是什么意思的名字
+```sql
+CREATE INDEX idx_state ON customers (state);
+```
+
+再次运行加上 EXPLAIN 的解释性查询语句
+```sql
+EXPLAIN SELECT customer_id FROM customers WHERE state = 'CA';
+```
+
+这次显示 type 是 ref 而 rows 只有 112，扫描的行数显著减少，查询效率极大提升。
+
+另外，注意 possible keys 和 key 代表了 MySQL 找到的执行此查询可用的索引（之后会看到，可能不止一个）以及最终实际选择的最优的索引
+
+**练习**
+
+解释性查询积分过千的顾客id，建立索引后再来一次并对比两次结果
+
+```sql
+EXPLAIN SELECT customer_id 
+FROM customers WHERE points > 1000;
+
+CREATE INDEX idx_points ON customers (points);
+
+EXPLAIN SELECT customer_id 
+FROM customers WHERE points > 1000;
+```
+
+建立索引后的查询 type 为 range，表明我们查询的是一个取值范围的记录，扫描的行数 rows 从 1010 降为了 529，减了一半左右
+
+**小结**
+
+解释性查询是在查询语句前加上 `EXPLAIN`
+
+创建索引的语法：
+
+> CREATE INDEX 索引名（通常是 idx_列名） ON 表名 (列名);
+
+- **4、查看索引**
+
+**实例1**
+
+查看 customers 表的索引：
+```sql
+SHOW INDEXES IN customers;
+-- SHOW INDEXES IN 表名
+```
+
+可以看到有三个索引，第一个是 **MySQL 为主键 customer\_id 创建的索引 PRIMARY，被称作clustered index 聚合索引**，每当我们为表创建主键时，MySQL 就会自动为其创建索引，这样就能快速通过主键（通常是某id）找到记录。后两个是我们之前手动为 state 和 points 字段建立的索引 idx\_state 和 idx\_points，它们是 **secondary index 从属索引，MySQL 在创建从属索引时会自动为其添加主键列**，如每个 idx\_points 索引的记录有两个值：客户的积分points 和对应的客户编号 customer\_id，这样就可以通过客户积分快速找到对应的客户记录
+
+索引查询表中还列示了索引的一些性质，其中：
+
+*   Non\_unique 是否是非唯一的，即是否是可重复的、可相同的，一般主键索引是0，其它是1
+*   Column\_name 表明索引建立在什么字段上
+*   Collation 是索引内数据的排序方式，其中A是升序，B是降序
+*   Cardinality（基数）表明索引中独特值/不同值的数量，如 PRIMARY 的基数就是 1010，毕竟每条记录都有独特的主键，而另两个索引的基数都要少一些，从之前 Non\_unique 为 1 也可以看得出来 state 和 points 有重复值，这里的基数可以更明确看到 state 和 points 具体有多少种不同的值
+*   Index\_type 都是BTREE（二叉树），之前说过MySQL里大部分的索引都是以二叉树的形式储存的，但 Mosh 把它们表格化了以使其更清晰易懂  
+
+**注意**
+
+Cardinality 这里只是近似值而非精确值，要先用以下语句重建顾客表的统计数据：
+
+> ANALYZE TABLE customers;
+
+然后再用 `SHOW INDEXES IN customers;` 得到的才是精确的 Cardinality 基数
+
+**实例2**
+
+查看orders表的索引
+
+> SHOW INDEXES IN orders;
+
+总共有四个： PRIMARY、fk\_orders\_customers\_idx、fk\_orders\_shippers\_idx、fk\_orders\_order\_statuses\_idx，第一个是建立在主键order\_id上的聚合索引，后三个是建立在三个外键 customer\_id、shipper\_id、status 上的从属索引。
+
+当我们建立表间链接时，MySQL会自动为外键添加索引，这样就能快速就行表连接（join tables）了
+
+**另外**
+
+还可以通过菜单方式查看某表中的索引，在左侧导航栏里 customers 表的子文件里就有一个 indexes 文件夹，点击里面的索引可以看到该索引的若干属性，其中 visible（可见性） 表示其是否可用（enabeled）
+
+**导航**
+
+下节课看如何对字符串列创建索引
+
+- **5、前缀索引**
+
+当索引的列是字符串时（包括 CHAR、VARCHAR、TEXT、BLOG），尤其是当字符串较长时，我们通常不会使用整个字符串而是只是用字符串的前面几个字符来建立索引，这被称作 **Prefix Indexes 前缀索引**，这样可以减少索引的大小使其更容易在内存中操作，毕竟在内存中操作数据比在硬盘中快很多
+
+**案例**
+
+为 customers 表的 last\_name 建立索引并且只使用其前20个字符：
+```sql
+CREATE INDEX idx_lastname ON customers (last_name(20));
+```
+
+这个字符数的设定对于 CHAR 和 VARCHAR 是可选的，但对于 TEXT 和 BLOG 是必须的
+
+**最佳字符数**
+
+可最佳字符数如何确定呢？太多了会使得索引太大难以在内存中运行，太少又达不到筛选的效果，比如，只用第一个字符建立索引，那如果查找A开头的名字，索引可能会返回10万个结果，然后就必须对这10万个结果逐条筛选。
+
+可以利用 COUNT、DISTINCT、LEFT 关键词和函数来测试不同数目的前缀字符得到的独特值个数，目标是用尽可能少的前缀字符得到尽可能多的独特值个数：
+
+```sql
+SELECT 
+    COUNT(DISTINCT LEFT(last_name, 1)),
+    COUNT(DISTINCT LEFT(last_name, 5)),
+    COUNT(DISTINCT LEFT(last_name, 10))
+FROM customers
+
+-- 结果是 '25', '966', '996'
+```
+
+可见从前1个到前5个字符，效果提升是很显著的，但从前5个到前10个字符，所用的字符数增加了一倍但识别效果只增加了一点点，再加上5个字符已经能识别出966个独特值，与1010的记录总数相去不远了，所以可以认为用前5个字符来创建前缀索引是最优的
+
+- **6、全文索引**
+
+**案例**
+
+运行 create-db-blog.sql 得到 sql\_blog 数据库，里面只包含一个 posts 表（文章表），每条记录就是一篇文章的编号 post\_id、标题 title、内容 body 和 发布日期 data\_published
+
+假设我们创建了一个博客网站，里面有一些文章，并存放在上面这个 sql\_blog 数据库里，如何让用户可以对博客文章进行搜索呢？
+
+假设，用户想搜索包含 react 及 redux（两个有关前端的重要的 javascript 库）的文章，如果用 LIKE 操作符进行筛选：
+
+```sql
+USE sql_blog;
+SELECT *
+FROM posts
+WHERE title LIKE '%react redux%'
+    OR body LIKE '%react redux%';
+```
+
+有两个问题：
+
+1.  在没有索引的情况下，会对所有文本进行全面扫描，效率低下。如果用上节课讲的前缀索引也不行，因为前缀索引只包含标题或内容开头的若干字符，若搜索的内容不在开头，以依然需要全面扫描  
+    
+2.  这种搜索方式只会返回完全符合 '%react redux%' 的结果，但我们一般搜索时，是希望得到包含这两个单词的任意一个或两个，任意顺序，中间有任意间隔的所有相关结果，即 google 式的模糊搜索
+
+我们通过建立 **Fulltext Index 全文索引** 来实现这样的搜索
+
+**全文索引对相应字符串列的所有字符串建立索引，它就像一个字典，它会剔除掉in、the这样无意义的词汇并记录其他所有出现过的词汇以及每一个词汇出现过的一系列位置**
+
+```sql
+-- 建立全文索引：
+CREATE FULLTEXT INDEX idx_title_body ON posts (title, body);
+
+-- 利用全文索引，结合 MATCH 和 AGAINST 进行 google 式的模糊搜索:
+SELECT *
+FROM posts
+WHERE MATCH(title, body) AGAINST('react redux');
+```
+
+注意MATCH后的括号里必须包含全文索引 idx\_title\_body 建立时相关的所有列，不然会报错
+
+还可以把 `MATCH(title, body) AGAINST('react redux')` 包含在选择语句里， 这样还能看到各结果的 relevance score 相关性得分（一个 0 到 1 的浮点数），可以看出结果是按相关行降序排列的
+
+```sql
+SELECT *, MATCH(title, body) AGAINST('react redux')
+FROM posts
+WHERE MATCH(title, body) AGAINST('react redux');
+```
+
+全文检索有两个模式：自然语言模式和布林模式，自然语言模式是默认模式，也是上面用到的模式。布林模式可以更明确地选择包含或排除一些词汇（google也有类似功能），如：
+
+1.  尽量有 react，不要有 redux，必须有 form
+```sql
+...
+WHERE MATCH(title, body) AGAINST('react -redux +form' IN BOOLEAN MODE);
+```
+
+2. 布林模式也可以实现精确搜索，就是将需要精确搜索的内容再用双引号包起来
+```sql
+...
+WHERE MATCH(title, body) AGAINST('"handling a form"' IN BOOLEAN MODE);
+```
+
+**小结**
+
+全文索引十分强大，如果你要建一个搜索引擎可以使用它，特别是要搜索的是长文本时，如文章、博客、说明和描述，否则，如果搜索比较短的字符串，比如名字或地址，就使用前置字符串
+
+- **7、组合索引**
+
+查看 customers 表中的索引：
+```sql
+USE sql_store;
+SHOW INDEXES IN customers;
+```
+
+目前有 PRIMARY、idx\_state、idx\_points 三个索引
+
+之前只是对 state 或 points 单独进行筛选查询，现在我们要用 AND 同时对两个字段进行筛选查询，例如，查询所在州为 'CA' 而且积分大于 1000 的顾客id：
+```sql
+EXPLAIN SELECT customer_id
+FROM customers
+WHERE state = 'CA' AND points > 1000;
+```
+
+会发现 MySQL 在 idx\_state、idx\_points 两个候选索引最终选择了 idx\_state，总共扫描了 112 行记录
+
+相对于无索引时要扫描所有的 1010 条记录，这要快很多，但问题是，idx\_state 这种单字段的索引只做了一半的工作：它能帮助快速找到在 'CA' 的顾客，但要寻找其中积分大于1000的人时，却不得不到磁盘里进行原表扫描（因为 idx\_state 索引里并没有积分信息），如果加州有一百万人的话这就会变得很慢。
+
+所以我们要建立 state 和 points 的组合索引：（两者的顺序其实很重要，下节课讲）
+```sql
+CREATE INDEX idx_state_points ON customers (state, points);
+```
+
+再次运行之前的查询，发现在 idx\_state、idx\_points、idx\_state\_points 三个候选索引中 MySQL 发现组合索引 idx\_state\_points 对我们要做的查询而言是最优的因而选择了它，最终扫描的行数由 112 降到了 58，速度确实提高了
+
+之后会看到组合索引也能提高排序的效率
+
+我们可以用 `DROP` 关键字删除掉那两个单列的索引
+```sql
+DROP INDEX idx_state ON customers;
+DROP INDEX idx_points ON customers;
+```
+
+**注意**
+
+新手爱犯的错误是给表里每一列都建立一个单独的索引，再加上 MySQL 会给每个索引自动加上主键，这些过多的索引会占用大量储存空间，而且数据每次数据更新都会重建索引，所以过多的索引也会拖慢更新速度
+
+但实际中更多的是用到组合索引，所以不应该无脑地为每一列建立单独的索引而应该依据查询需求来建立合适的组合索引，一个组合索引最多可组合 16 列，但一般 4 到 6 列的组合索引是比较合适的，但别把这个数字当作金科玉律，总是根据实际的查询需求和数据量来考虑
+
+- **8、组合索引的列顺序**
+
+**组合索引的原理**
+
+对于组合索引，一定要从**原理**上去理解，比如 idx\_state\_lastname， 它是先对 state 建立分类排序的索引，然后再在同一州（如 'CA'）内建立 lastname 的分类排序索引，所以这个索引对两类查询有效：
+
+1. 单独针对 state 的查询（快速找到州）
+
+2. 同时针对 state 和 lastname 的查询（快速找到州再在该州内快速找到该姓氏）
+
+但 idx\_state\_lastname 对单独针对 lastname 的查询无效，因为它必须在每个州里去找该姓氏，相当于全面扫描了。所以如果单独查找某州的需求存在的话，就还需要另外为其单独建一个索引 idx\_state
+
+基于对以上原理的理解，我们在确定组合索引的列顺序时有两个指导原则：
+
+1.  **将最常使用的列放在前面**
+
+在建立组合索引时应该将最常用的列放在最前面，这样的索引会对更多的查询有效
+
+2. **将基数（Cardinality）最大/独特性最高的列放在前面**
+
+因为基数越大/独特性越高，起到的筛选作用越明显，能够迅速缩小查询范围。比如如果首先以性别来筛选，那只能将选择范围缩小到一半左右，但如果先以所在州来筛选，以总共 20 个州且每个州人数相当为例，那就会迅速将选择范围缩小到 1/20
+
+但最终仍然要根据实际的查询需求来决定，因为实际查询的筛选条件不一定能完全利用相应列的全部独特性，举例说明如下：
+
+首先，为了比较的目的，针对 state 和 last\_name 两列，同时建立两种顺序的索引 idx\_state\_lastname 和 idx\_lastname\_state
+
+last\_name 的独特性肯定是比 state 的独特性高的，可以用以下语句验证：
+```sql
+SELECT 
+   COUNT(DISTINCT state),
+   COUNT(DISTINCT last_name)
+FROM customers;
+-- 48, 996
+```
+
+所以如果查询语句的筛选条件为 `WHERE state = 'CA' AND last_name = 'Smith'`，这种目标是特定州和特定姓氏的的查询能够充分利用各列独特性，肯定用 idx\_lastname\_state 先筛选姓氏能更快缩小范围提高效率
+
+但如果进行姓氏的**模糊查询**，如，要查询 在加州 且 姓氏以A开头 的顾客，我们可以用 `USE INDEX （索引名）` 子句来强制选择使用的索引，对两种索引的查询结果进行对比：
+```sql
+EXPLAIN SELECT customer_id
+FROM customers
+USE INDEX (idx_state_lastname)
+-- 注意括号
+-- 注意位置：FROM之后WHERE之前
+WHERE state = 'CA' AND last_name LIKE 'A%';
+-- 7 rows
+
+EXPLAIN SELECT customer_id
+FROM customers
+USE INDEX (idx_lastname_state)
+WHERE state = 'CA' AND last_name LIKE 'A%';
+-- 40 rows
+```
+
+会发现 idx\_state\_lastname 反而扫描的行数更少，效率更高，把查找的 state 换为 'NY' 也是一样。这是因为 last\_name 的筛选条件是 'LIKE' 而不是 '='，约束性更小（less restrictive），更开放（more open），并没有充分利用姓氏列的高独特性，对于这种针对姓氏的模糊查找，先筛选州反而能更快缩小范围提高效率，所以 idx\_state\_lastname 更有效
+
+当然，如果对两列都进行模糊查询，如查询语句的筛选条件变为 `WHERE state LIKE 'A%' AND last_name LIKE 'A%'`，可以想得到，验证也能证实，idx\_lastname\_state 会重新胜出
+
+**总之**，不仅要考虑各列的独特性高低，也要考虑常用的查询是否能充分利用各列的独特性，两者结合来决定组合索引里的排序，不确定就测试对比验证，所以，第二条原则也许应该改为**将常用查询实际利用到的独特性程度最高的列放在前面**
+
+**思想**
+
+总之，任何一个索引都只对一类查询有效而且对特定的查询内容最高效，我们要现实一些，要去最**优化那些性能关键查询**，而不是所有可能的查询
+
+能加速所有查询的索引是不存在的，随着数据库以及查询需求的增长和扩展，我们可能需要建立**不同列的不同顺序的组合索引**
+
+- **9、索引无效时**
+
+有时你有一个可用的索引，但你的查询却未能充分利用它，这里我们看两种常见的情形：
+
+**案例1**
+
+查找在加州**或**积分大于1000的顾客id
+
+注意之前查询的筛选条件都是**与（AND）**，这里是**或（OR）**
+```sql
+USE sql_store;
+EXPLAIN SELECT customer_id FROM customers
+WHERE state = 'CA' OR points > 1000;
+```
+
+发现虽然显示 type 是 index，用的索引是 idx\_state\_points，但扫描的行数却是 1010 rows
+
+因为这里是 或（OR） 查询，在找到加州的顾客后，仍然需要在每个州里去找积分大于 1000 的顾客，所以要扫描所有的 1010 条索引记录，即进行了 全索引扫描（full index scan）。当然全索引扫描比全表扫描要快一点，因为前者只有三列而后者有很多列，前者在内存里进行而后者在硬盘里进行，但 全索引扫描 依然说明索引未被有效利用，如果是百万条记录还是会很慢
+
+我们需要**以尽可能充分利用索引地方式来编写查询，或者说以最迎合索引的方式编写查询**，就这个例子而言，可另建一个 idx\_points 并将这个 OR 查询改写为两部分，分别用各自最合适的索引，再用 UNION 融合结果（注意 UNION 是自动去重的，所以起到了和 OR 相同的作用，如果要保留重复记录就要用 UNION ALL，这里显然不是）
+
+```sql
+CREATE INDEX idx_points ON customers (points);
+
+EXPLAIN
+        SELECT customer_id FROM customers
+        WHERE state = 'CA'
+    UNION
+        SELECT customer_id FROM customers
+        WHERE points > 1000;
+```
+
+结果显示，两部分查询中，MySQL 分别自动选用了对该查询最有效的索引 idx\_state\_points 和 idx\_points，扫描的行数分别为 112 和 529，总共 641 行，相比于 1010 行有很大的提升
+
+**案例2**
+
+查询目前积分增加 10 分后超过 2000 分的顾客id:
+```sql
+EXPLAIN SELECT customer_id FROM customers
+WHERE points + 10 > 2010;
+-- key: idx_points
+-- rows: 1010
+```
+
+又变成了 1010 行全索引扫描，因为 column expression 列表达式（列运算） 不能最有效地使用索引，要重写运算表达式，独立/分离此列（isolate the column）
+
+```sql
+EXPLAIN SELECT customer_id FROM customers
+WHERE points > 2000;
+-- key: idx_points
+-- rows: 4
+```
+
+直接从1010行降为4行，效率提升显著。所以想要 MySQL 有效利用索引，就**总是在表达式中将列独立出来**
+
+- **10、使用索引排序**
+
+之前创建的索引杂七杂八的太多了，只保留 idx\_lastname, idx\_state\_points 两个索引，把其他的 drop 了
+
+```sql
+USE sql_store;
+SHOW INDEXES IN customers;
+DROP INDEX idx_points ON customers;
+DROP INDEX idx_state_lastname ON customers;
+DROP INDEX idx_lastname_state ON customers;
+SHOW INDEXES IN customers;
+```
+
+可以用 `SHOW STATUS;` 来查看Mysql服务器使用的众多变量，其中有个叫 'last\_query\_cost' 是上次查询的消耗值，我们可以用 `LIKE` 关键字来筛选该变量，即： `SHOW STATUS LIKE 'last_query_cost';`
+
+按 state 给 customer\_id 排序（下节课讲为什么是 customer\_id），再按 first\_name 给 customer\_id 排序，对比：
+
+```sql
+EXPLAIN SELECT customer_id 
+FROM customers
+ORDER BY state;
+-- type: index, rows: 1010, Extra: Using index
+SHOW STATUS LIKE 'last_query_cost';  
+-- cost: 102.749
+
+EXPLAIN SELECT customer_id 
+FROM customers
+ORDER BY first_name;
+-- type: ALL, rows: 1010, Extra: Using filesort 
+SHOW STATUS LIKE 'last_query_cost';  
+-- cost: 1112.749
+```
+
+注意查看 Extra 信息，非索引列排序常常用的是 filesort 算法，从 cost 可以看到 filesort 消耗的资源几乎是用索引排序的 10 倍，这很好理解，因为索引就是对字段进行分类和排序，等于是已经提前排好序了
+
+所以，不到万不得已不要给非索引数据排序，有可能的话尽量设计好索引用于查询和排序
+
+但如之前所说，**特定的索引只对特定的查询（WHERE 筛选条件）和排序（ORDER BY 排序条件）有效**，这还是要从原理上理解：
+
+> 以 idx\_state\_points 为例，它等于是先对 state 分类排序，再在同一个 state 内对 points 进行分类排序，再加上 customer\_id 映射到相应的原表记录
+
+所以，索引 idx\_state\_points 对于以下排序有效：
+```sql
+ORDER BY state
+ORDER BY state, points
+ORDER BY points WHERE state = 'CA'
+```
+
+相反，idx\_state\_points 对以下索引无效或只是部分有效，这些都是会部分或全部用到 filesort 算法的：
+
+```sql
+ORDER BY points
+ORDER BY points, state
+ORDER BY state, first_name, points
+```
+
+**总的来说一个组合索引对于按它的组合列 “从头开始并按顺序” 的 WHERE 和 ORDER BY 子句最有效**
+
+对于 ORDER BY 子句还有一个问题是升降序，索引本身是升序的，但可以 Backward index scan 倒序索引扫描，所以它**对所有同向的（同升序或同降序）的 ORDER BY 子句都有效，但对于升降序混合方向的 ORDER BY 语句则不够有效**，还是以 idx\_state\_points 为例，对以下 ORDER BY 子句有效，即完全是 Using index 且 cost 在一两百左右：
+```sql
+ORDER BY state 
+ORDER BY state DESC
+ORDER BY state, points
+ORDER BY state DESC, points DESC
+```
+
+但下面这两种就不能充分利用 idx\_state\_points，会部分使用 filesort 算法且 cost > 1000
+```sql
+ORDER BY state, points DESC
+ORDER BY state DESC, points
+```
+
+**总结**
+
+**特定**索引只对特定查询和排序最有效，而且这些从索引的**原理**上都很好理解
+
+建立什么索引取决于查询和排序**需求**，而查询和排序也要尽量去**迎合**索引以尽可能提高效率
+
+- **11、覆盖索引**
+
+这节课讲为什么之前 SELECT 选择子句里只选 customer\_id 这一个字段
+
+**实例**
+
+以 state 排序查询 customers 表，每次 SELECT 不同的列并对比结果：
+```sql
+USE sql_store;
+
+-- 1. 只选择 customer_id:
+EXPLAIN SELECT customer_id FROM customers
+ORDER BY state;
+SHOW STATUS LIKE 'last_query_cost';
+
+-- 2. 选择 customer_id 和 state:
+EXPLAIN SELECT customer_id, state FROM customers
+ORDER BY state;
+SHOW STATUS LIKE 'last_query_cost';
+
+-- 3. 选择所有字段:
+EXPLAIN SELECT * FROM customers
+ORDER BY state;
+SHOW STATUS LIKE 'last_query_cost';
+```
+
+会验证发现前两次是完全 Using index 而且 cost 均只有两百左右，而第3种是 Using filesort 而且 cost 超过一千，这从 idx\_state\_points 的原理上也很好理解：
+
+前面提到过，**从属索引除了包含相关列还会自动包含主键列**（通常是某种id列）来和原表中的记录建立对应关系，所以 组合索引 idx\_state\_points 中包含三列：state、points 以及 customer\_id，所以如果 SELECT 子句里选择的列是这三列中的一列或几列的话，整个查询就可以在只使用索引不碰原表的情况下完成，这叫作**覆盖索引（covering index）**，即索引满足了查询的所有需求所以全程不需要使用原表，这是最快的
+
+**总结**
+
+设计索引时，先看 **WHERE** 子句，看看最常用的筛选字段是什么，把它们包含在索引中，这样就能迅速缩小查找范围，其次查看 **ORDER BY** 子句，看看能不能将这些列包含在索引中，最后，看看 **SELECT** 子句中的列，如果你连这些也包含了，就得到了覆盖索引，MySQL 就能只用索引就完成你的查询，实现最快的查询速度
+
+- **12、维护索引**
+
+索引维护注意三点：
+
+1.  重复索引（duplicate index）：
+
+MySQL 不会阻止你建立重复的索引，所以记得在建立新索引前前检查一下已有索引。验证后发现，具体而言：
+
+同名索引是不被允许的：
+```sql
+CREATE INDEX idx_state_points ON customers (state, points);
+-- Error Code: 1061. Duplicate key name 'idx_state_points'
+```
+
+对相同列的相同顺序建立不同名的索引，5.7 版本暂时允许，但 8.0 版本不被允许：
+```sql
+CREATE INDEX idx_state_points2 ON customers (state, points);
+/* warning(s): 1831 Duplicate index 'idx_state_points2' 
+defined on the table 'sql_store.customers'. 
+This is deprecated (不赞成；弃用；不宜用) 
+and will be disallowed in a future release. */
+```
+
+2. 冗余索引（redundant index）：
+
+比如，已有 idx\_state\_points，那 idx\_state 就是冗余的了，因为所有 idx\_state 能满足的筛选和排序需求 idx\_state\_points 都能满足
+
+但当已有 idx\_state\_points 时，idx\_points 和 idx\_points\_state 并不是冗余的，因为它们可以满足不同的筛选和排序需求
+
+3. 无用索引（unused index）:
+
+这个很好理解，就是那些常用查询、排序用不到的索引没必要建立，毕竟索引是会占用空间和拖慢数据更新速度的
+
+所以一再强调 **考虑实际需求** 的重要性
+
+**小结**
+
+要做好索引管理：
+
+1.  在新建索引时，**总是先查看一下现有索引**，避免重复、冗余、无用的索引，这是最基本的要求。  
+    
+2.  其次，索引本身要是要占用空间和拖慢更新速度的所以也是有代价的，而且不同索引对不同的筛选、排序、查询内容的有效性不同，因此，理想状态下，索引管理也应该是个**根据业务查询需求需要不断去权衡成本效益，抓大放小，迭代优化**的过程  
+    
+
+- **13、 性能最佳实践 (文档)**
+
+1.  较小的表性能更好。不要存储不需要的数据。解决今天的问题，而不是明天可能永远不会发生的问题。  
+    
+2.  使用尽可能小的数据类型。如果你需要存储人们的年龄，一个TINYINT就足够了，无需使用INT。对于一个小的表来说，节省几个字节没什么大不了的，但在包含数百万条记录的表中却具有显著的影响。  
+    
+3.  每个表都必须有一个主键。  
+    
+4.  主键应短。如果您只需要存储一百条记录，最好选择 TINYINT 而不是 INT。  
+    
+5.  首选数字类型而不是字符串作为主键。这使得通过主键查找记录更快。  
+    
+6.  避免BLOB。它们会增加数据库的大小，并会对性能产生负面影响。如果可以，请将文件存储在磁盘上。  
+    
+7.  如果表的列太多，请考虑使用一对一关系将其拆分为两个相关表。这称为垂直分区（vertical partitioning）。例如，您可能有一个包含地址列的客户表。**如果这些地址不经常被读取**，请将表拆分为两个表（users 和 user\_addresses）。  
+    
+8.  **相反，如果由于数据过于碎片化而总是需要在查询中多次使用表联接**，则可能需要考虑对数据反归一化。反归一化与归一化相反。它涉及把一个表中的列合并到另一个表（以减少联接数）。  
+    
+9.  **请考虑为昂贵的查询创建摘要/缓存表。**例如，如果获取论坛列表和每个论坛中的帖子数量的查询非常昂贵，请创建一个名为 forums\_summary 的表，其中包含论坛列表及其中的帖子数量。您**可以使用事件定期刷新此表中的数据。您还可以使用触发器在每次有新帖子时更新计数。**  
+    
+10.  **全表扫描是查询速度慢的一个主要原因。使用 EXPLAIN 语句并查找类型为 "ALL" 的查询。这些是全表扫描。使用索引优化这些查询。**  
+    
+11.  在**设计索引时**，请先查看 WHERE 子句中的列。这些是第一批候选人，因为它们有助于缩小搜索范围。接下来，查看 ORDER BY 子句中使用的列。如果它们存在于索引中，MySQL 可以扫描索引以返回有序的数据，而无需执行排序操作（filesort）。最后，考虑将 SELECT 子句中的列添加到索引中。这为您提供了覆盖索引，能覆盖你查询的完整需求。MySQL 不再需要从原表中检索任何内容。  
+    
+12.  **选择组合索引，而不是多个单列索引**。  
+    
+13.  索引中的列**顺序**很重要。将最常用的列和基数较高的列放在第一位，但始终考虑您的查询。  
+    
+14.  删除重复、冗余和未使用的索引。重复索引是同一组具有相同顺序的列上的索引。冗余索引是不必要的索引，可以替换为现有索引。例如，如果在列（A、 B）上有索引，并在列 （A）上创建另一个索引，则后者是冗余的，因为前一个索引可以满足相同的需求。  
+    
+15.  在分析现有索引之前，不要创建新索引。  
+    
+16.  在查询中隔离你的列，以便 MySQL 可以使用你的索引。  
+    
+17.  避免 SELECT \*。**大多数时候，选择所有列会忽略索引并返回您可能不需要的不必要的列。这会给数据库服务器带来额外负载。**  
+    
+18.  只返回你需要的行。使用 LIMIT 子句限制返回的行数。  
+    
+19.  **避免使用前导通配符的LIKE 表达式（eg."%name"） 。**  
+    
+20.  如果您有一个使用 OR 运算符的速度较慢的查询，请考虑将查询分解为两个使用单独索引的查询，并使用 UNION 运算符组合它们。  
+    
+## 十五章、保护数据库
+
+- **1、介绍**
+
+**导航**
+
+之前都是介绍本地数据库而你自己就是数据库的唯一用户，所以不必考虑安全问题。
+
+但实际业务中数据库大多放在服务器里，你必须妥善处理好用户账户和权限的问题，合理决定谁拥有什么程度的权限以防止对数据的破坏和误用
+
+这一章，我们学习如何增强数据库的安全性
+
+- **2、创建一个用户**
+
+到目前为止我们一直使用的是 root 用户帐户，这是在安装 MySQL 时就设置的根账户
+
+在生产环境中我们需要创建新用户并合理分配权限
+
+例如，你有一个应用程序及其相关联的数据库，你要让使用你应用程序的用户拥有读写数据的权限，但他们不应该有改变数据库结构的权限，如创建和删除一张表，否则会出大问题
+
+又如，你新招了一个DBA（数据库管理员），你需要给他新建一个账户，让他可以访问一个或多个数据库乃至整个MySQL服务器
+
+**实例**
+
+设置一个新用户，用户名为 john，可以选择用 `@` 来限制他可以从哪些地方访问数据库
+```sql
+CREATE USER john  
+-- 无限制，可从任何位置访问 
+
+CREATE USER john@127.0.0.1;  
+-- 限制ip地址，可以是特定电脑，也可以是特定网络服务器（web server）
+
+CREATE USER john@localhost;  
+-- 限制主机名，特定电脑
+
+CREATE USER john@'codewithmosh.com';  
+-- 限制域名（注意加引号），可以是该域名内的任意电脑，但子域名则不行 
+
+CREATE USER john@'%.codewithmosh.com'; 
+-- 加上了通配符，可以是该域名及其子域名下的任意电脑
+```
+
+可以用 `IDENTIFIED BY` 来设置密码
+```sql
+CREATE USER john IDENTIFIED BY '1234' 
+-- 可从任何地方访问，但密码为 '1234'
+-- 该密码只是为了简化，请总是用很长的强密码
+```
+
+- **3、查看用户**
+
+假设上节课我们最后用 `CREATE USER john` 创建了一个新账户 john，无限制，无密码
+
+用两种方式可以查看MySQL服务器上的所有用户：
+
+**法1**
+
+在一个自动创建的名为 mysql 的数据库（导航里似乎是隐藏了看不到）里，有个user表记录了帐户信息，查询即可：
+```sql
+SELECT * FROM mysql.user;
+```
+
+可以看到罗列出的所有用户，除了 john 和 root 帐户，还有几个 MySQL 内部自动建立和使用的帐户（用户名均为 mysql.\*）
+
+Host 字段表示用户可以从哪里访问数据库，john 是一个通配符 %，表示他可以从任意位置访问数据库，其它几个用户都是 localhost，表示都只能从本电脑访问数据库，不能从远程链接访问
+
+后面的一系列字段都是各种权限的配置，后面会细讲
+
+**法2**
+
+也可以直接点击左侧导航栏的 Administration 标签页里的 Users and Privileges，同样可以查看服务器上的用户列表和信息
+
+- **4、删除用户**
+
+**案例**
+
+假设之前创建了 bob 的帐户，允许在 codewithmosh.com 域名内访问数据库，密码是 '1234'：
+```sql
+CREATE USER bob@codewithmosh.com IDENTIFIED BY '1234';
+```
+
+之后 bob 离开了组织，就应该删除它的账户，注意依然要在用户名后跟上 `@主机名（host）`
+```sql
+DROP bob@codewithmosh.com;
+```
+
+**最佳实践**
+
+记得总是及时删除掉组织中那些不用的账户
+
+- **5、修改密码**
+
+人们时常忘记自己的密码，作为管理员，你时常被要求修改别人的或自己的密码，这很简单，有两种方法：
+
+- 用 SET 语句
+```sql
+SET PASSWORD FOR john = '1234';
+-- 修改john的密码
+
+SET PASSWORD = '1234';  
+-- 修改当前登录账户的密码
+```
+
+- 用导航面板：
+
+还是在 Administration 标签页 Users and Privileges 里，点击用户 john，可修改其密码，最后记得点 Apply 应用。另外还可以点击 Expire Password 强制其密码过期，下次用户登录必须修改密码。
+
+- **6、权限许可**
+
+创建用户后需要分配权限，最常见的是两种情形：
+
+**常见情形1.** 对于网页或桌面应用程序的使用用户，给予其读写数据的权限，但禁止其增删表或修改表结构
+
+例如，我们有个叫作 moon 的应用程序，我们给这个应用程序建个用户帐户名为 moon\_app (app指明这代表的是**整个应用程序**而非一个人)
+```sql
+CREATE USER moon_app IDENTIFIED BY '1234';
+```
+
+给予其对 sql\_store 数据库增删查改以及执行储存过程（EXECUTE）的权限，这是给**终端用户常用的权限配置**
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE
+-- GRANT子句表明授予哪些权限
+ON sql_store.* 
+-- ON子句表明可访问哪些数据库和表
+-- ON sql_store.*代表可访问某数据库所有表，常见设置
+-- 只允许访问特定表则是 ON sql_store.customers，不常见
+TO moon_app;
+-- 表明授权给哪个用户
+-- 如果该用户有访问地址限制，也要加上，如：@ip地址/域名/主机名
+```
+
+这样就完成了权限配置
+
+我们来测试一下，先用这个新账户 moon\_app 建立一个新连接（点击 workbench 主页 MySQL connections 处的加号按钮）：
+
+将连接名（Connection Name）设置为：moon\_app\_connection； 主机名（Hostname）和端口（Post）是自动设置的，分别为：127.0.0.1 和 **3306**； 用户名（Username）和密码（Password）输入建立时的设置的**用户名和密码**：moon\_app 和 1234
+
+在新连接里测试，发现果然只能访问 sql\_store 数据库而不能访问其他数据库（导航面板也只会显示 sql\_store 数据库）
+```sql
+USE sql_store;
+SELECT * FROM customers;
+
+USE sql_invoicing;
+/* Error Code: 1044. Access denied for user 
+'moon_app'@'%' to database 'sql_invoicing' */
+```
+
+**常见情形2.** 对于管理员，给予其一个或多个数据库乃至整个服务器的管理权限，这不仅包括表中数据的读写，还包括增删表、修改表结构以及创建事务和触发器等
+
+可以谷歌 **MySQL privileges**，第一个结果就是官方文档里罗列的所有可用的权限及含义，其中的 `ALL` 是最高权限，通常我们给予管理员 `ALL` 权限
+```sql
+GRANT ALL
+ON sql_store.*
+-- 如果是 *.*，则代表所有数据库的所有表或整个服务器
+TO john;
+```
+
+- **7、查看权限**
+
+查看以给出的权限仍然有 SQL语句 和 导航菜单 两种方法：
+
+**法1**
+
+查看 john 的权限
+```sql
+SHOW GRANTS FOR john;
+```
+
+去掉 `FOR john`，即查看当前登录帐户的权限
+```sql
+SHOW GRANTS;
+```
+
+可以看到，当前root帐户拥有最高权限，除了 `ALL` 的所有权限外，还有另外一个叫 `PROXY` 的权限。感觉 root 帐户和 john 这样的 DBA 帐户的区别就跟群主和群管理员的区别一样
+
+**法2**
+
+依然可以通过导航栏 Administration 标签页里的 Users and Privileges 来查看各用户的权限，其中 Administrative Roles 展示了该用户的**角色（Roles, 如 DBA，有很多可选项，感觉像是预设权限组合）和全局权限（Global Privileges）**, 而 Schema Privileges 则显示该用户在**特定数据库的权限**，因为 root 和 john 的权限是针对所有数据库的，所以没有特定数据库权限而 moon\_app 就显示有针对 sql\_store 数据库的权限，所有这些都是可以选择和更改的，记得最后要点Apply应用
+
+- **8、撤销权限**
+
+有时你可能发现给某人的权限给错了，或者给某人的权限过多导致他滥用权限，这节课学习如何收回权限，很简单，和给予权限很类似
+
+**案例**
+
+之前说过，应该只给予 moon\_app 读写 sql\_store 数据库的表内数据以及执行储存过程的权限，假设我们错误的给予了其创建视图的权限：
+```sql
+GRANT CREATE VIEW 
+ON sql_store.*
+TO moon_app;
+```
+
+要收回此权限，只用把语句中的 GRANT 变 REVOKE，把 TO 变 FROM 就行了，就这么简单：
+```sql
+REVOKE CREATE VIEW 
+ON sql_store.*
+FROM moon_app;
+```
+
+**思想**
+
+不要给予一个账户过多权限，总是给予他所必须的最小权限，不然就在系统中创造了太多的安全漏洞
