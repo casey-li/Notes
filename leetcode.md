@@ -4,6 +4,8 @@
   - [:lollipop: 153. 寻找旋转排序数组中的最小值](#lollipop-153-寻找旋转排序数组中的最小值)
   - [:lollipop: 33. 搜索旋转排序数组](#lollipop-33-搜索旋转排序数组)
   - [:lollipop: 2560. 打家劫舍 IV](#lollipop-2560-打家劫舍-iv)
+  - [:lollipop: 204. 计数质数](#lollipop-204-计数质数)
+  - [:lollipop: 166. 分数到小数](#lollipop-166-分数到小数)
   - [:lollipop:](#lollipop)
 - [:wink: 栈](#wink-栈)
   - [:lollipop: 155. 最小栈](#lollipop-155-最小栈)
@@ -390,6 +392,133 @@ func minCapability(nums []int, k int) int {
 func max(a, b int) int { if b > a { return b }; return a }
 ```
 
+## :lollipop: [204. 计数质数](https://leetcode.cn/problems/count-primes/description/)
+
+- :cherry_blossom: 思路
+
+板子，可以用埃氏筛或线性筛
+
+埃氏筛时间复杂度 `O(nloglogn)`，因为会有数被重复标记
+
+线性筛时间复杂度 `O(n)`，每个合数仅被划掉一次，被它的最小质因子划掉
+
+- **:beers: 代码**
+
+注意溢出的问题
+
+> c++
+
+```c++
+// 埃氏筛
+class Solution {
+public:
+    int countPrimes(int n) {
+        vector<bool> isPrimes(n, true);
+        int primes = 0;
+        for (int i = 2; i < n; ++i) {
+            if (isPrimes[i]) {
+                ++primes;
+                for (long long j = static_cast<long long> (i) * i; j < n; j += i) {
+                    isPrimes[j] = false;
+                }
+            }
+        }
+        return primes;
+    }
+};
+
+// 埃氏筛，避免溢出的写法
+class Solution {
+public:
+    int countPrimes(int n) {
+        vector<bool> isPrimes(n, true);
+        int primes = 0;
+        for (int i = 2; i < n; ++i) {
+            if (isPrimes[i]) {
+                ++primes;
+                for (int j = i; j <= n / i && i * j != n; ++j) {
+                    isPrimes[i * j] = false;
+                }
+            }
+        }
+        return primes;
+    }
+};
+
+// 线性筛
+class Solution {
+public:
+    int countPrimes(int n) {
+        vector<int> p;
+        vector<bool> isPrimes(n, true);
+        int primes = 0;
+        for (int i = 2; i < n; ++i) {
+            if (isPrimes[i]) {
+                ++primes;
+                p.emplace_back(i);
+            }
+            for (int j = 0; j < p.size() && (long long) i * p[j] < n; ++j) {
+                isPrimes[p[j] * i] = false;
+                if (i % p[j] == 0) break;
+            }
+        }
+        return primes;
+    }
+};
+```
+
+## :lollipop: [166. 分数到小数](https://leetcode.cn/problems/fraction-to-recurring-decimal/description/)
+
+- :cherry_blossom: 思路
+
+需要模拟除法，每次除了以后会有余数，当存在相等的余数时就表明有循环小数了
+
+将答案分整数部分和小数部分，小数部分保存余数和在小数部分中的下标，那么当出现相同余数时，重复的部分就为之前记录的下标到最后这一段数字
+
+- **:beers: 代码**
+
+> c++
+
+```c++
+class Solution {
+public:
+    string fractionToDecimal(int numerator, int denominator) {
+        if ((long long)numerator % (long long )denominator == 0) {
+            return to_string((long long)numerator / (long long)denominator);
+        }
+        string res = "";
+        // 只有一个为负数
+        if (numerator < 0 ^ denominator < 0) {
+            res.push_back('-');
+        }
+        numerator = abs(numerator);
+        denominator = abs(denominator);
+        // 整数部分
+        int first = numerator / denominator;
+        res += to_string(first);
+        res.push_back('.');
+
+        // 小数部分，更新哈希表，余数先乘10，拼接结果，更新余数
+        string second = "";
+        unordered_map<int, int> umap;
+        long long reminder = numerator % denominator;
+        int index = 0;
+        while (reminder != 0 && !umap.count(reminder)) {
+            umap[reminder] = index;
+            reminder *= 10;
+            second += to_string(reminder / denominator);
+            reminder %= denominator;
+            index++;
+        }
+        if (reminder != 0) { // 有余数
+            int index = umap[reminder];
+            second = second.substr(0, index) + "(" + second.substr(index) + ")";
+        }
+        res += second;
+        return res;
+    }
+};
+```
 
 ## :lollipop: 
 

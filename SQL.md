@@ -904,7 +904,7 @@ UNION
         'Gold' AS type
     FROM customers 
     WHERE points > 3000
-
+   
 ORDER BY customer_id
 ```
 
