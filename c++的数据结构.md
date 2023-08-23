@@ -1,6 +1,7 @@
 
 - [:lollipop: 堆](#lollipop-堆)
 - [:lollipop: 智能指针](#lollipop-智能指针)
+- [:lollipop: Vector](#lollipop-vector)
 
 ## :lollipop: 堆
 
@@ -342,3 +343,133 @@ private:
 
 
 智能指针的线程安全由两方面保证（引用计数本身的线程安全和智能指针指向对象的线程安全）
+
+
+## :lollipop: Vector
+
+```c++
+#include <iostream>
+#include <vector>
+#include <memory>
+
+using namespace std;
+
+template <typename T>
+class Vector {
+public:
+	Vector() : m_first(nullptr), m_last(nullptr), m_end(nullptr) {}
+	Vector(const Vector&) {}
+
+	~Vector() {
+		if (m_first)
+		{
+			for (auto p = m_last - 1; p != m_first; --p)
+				alloc.destroy(p);
+			alloc.deallocate(m_first, m_end - m_first);
+		}
+	}
+
+	void push_back(const T& data)
+	{
+		if (size() == capacity())
+		{
+			size_t newCap = size() ? 2 * size() : 1;
+			realloc(newCap);
+		}
+
+		alloc.construct(m_last++, data);
+	}
+
+	void push_back(T&& data)
+	{
+		if (size() == capacity())
+		{
+			size_t newCap = size() ? 2 * size() : 1;
+			realloc(newCap);
+		}
+
+		alloc.construct(m_last++, std::move(data));
+	}
+
+	void resize(int n, const T& data) 
+	{
+		//if (n < size())
+		//{
+		//	for (auto p = m_last; p != m_first; )
+		//		alloc.destroy(--p);
+		//}
+		//else
+		//{
+
+		//}
+	}
+
+	void reserve(size_t n)
+	{
+		if (n < capacity())
+			return;
+
+		realloc(n);
+	}
+
+	size_t size() const { return m_last - m_first; }
+	size_t capacity() const { return m_end - m_first; }
+	T* begin() const { return m_first; }
+	T* end() const { return m_last; }
+	const T& operator[](size_t idx) const { return *(m_first + idx); }
+	T& operator[](size_t idx) { return *(m_first + idx); }
+
+private:
+	T* m_first, *m_last, * m_end;
+
+	static allocator<T> alloc;
+
+	void realloc(size_t newCap)
+	{
+		//size_t newCap = size() ? 2 * size() : 1;
+		auto newData = alloc.allocate(newCap);
+
+		T* target = newData;
+		T* p = m_first;
+		for (int i = 0; i < size(); ++i)
+			alloc.construct(target++, std::move(*p++));
+
+		if (m_first)
+		{
+			for (auto p = m_last; p != m_first; )
+				alloc.destroy(--p);
+			alloc.deallocate(m_first, m_end - m_first);
+		}
+		m_first = newData;
+		m_last = target;
+		m_end = m_first + newCap;
+	}
+};
+
+template <typename T>
+allocator<T> Vector<T>::alloc;
+
+int main() {
+
+	Vector<int> test;
+	cout << test.size() << ", " << test.capacity() << endl;
+	test.push_back(1);
+	cout << test.size() << ", " << test.capacity() << endl;
+	test.push_back(2);
+	cout << test.size() << ", " << test.capacity() << endl;
+	test.push_back(3);
+	cout << test.size() << ", " << test.capacity() << endl;
+	test.push_back(4);
+	cout << test.size() << ", " << test.capacity() << endl;
+	test.push_back(5);
+	test.push_back(6);
+	test.push_back(7);
+	cout << test.size() << ", " << test.capacity() << endl;
+	test.reserve(10);
+	cout << test.size() << ", " << test.capacity() << endl;
+	test[2] = 3;
+	for (int i = 0; i < test.size(); ++i)
+		cout << test[i] << endl;
+}
+
+```

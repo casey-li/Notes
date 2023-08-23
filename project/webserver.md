@@ -52,8 +52,7 @@
 #include <cassert>
 #include <iostream>
 
-class ThreadPool
-{
+class ThreadPool {
 public:
     ThreadPool() = default;
 
@@ -68,9 +67,8 @@ public:
 
 private:
     // 结构体，池子
-    struct Pool
-    {
-        std::mutex mtx;                         // 互斥锁
+    struct Pool {
+        std::mutex mtx;                           // 互斥锁
         std::condition_variable cond;             // 条件变量
         bool is_stop;                             // 线程池是否停止
         std::queue<std::function<void()>> tasks;  // 任务队列，存储无参且返回值为 void 的可调用对象 （待执行的任务）
@@ -80,8 +78,7 @@ private:
 };
 
 template<typename T>
-void ThreadPool::AddTask(T&& task)
-{
+void ThreadPool::AddTask(T&& task) {
     {
         std::lock_guard<std::mutex> locker(pool_->mtx);
         // 使用 std::forward<T> 实现完美转发，确保参数的值类别保持不变。
@@ -91,13 +88,11 @@ void ThreadPool::AddTask(T&& task)
 }
 
 
-ThreadPool::ThreadPool(size_t thread_num) : pool_(std::make_shared<Pool>())
-{
+ThreadPool::ThreadPool(size_t thread_num) : pool_(std::make_shared<Pool>()) {
     assert(thread_num > 0);
     pool_->is_stop = false;
     // 创建线程并进行线程分离
-    for (size_t i = 0; i < thread_num; ++i)
-    {
+    for (size_t i = 0; i < thread_num; ++i) {
         // c++ 的 std::thread 可以灵活的使用不同签名的工作函数
         // c 的 pthread.h 只接受 void *(*)(void *) 签名的函数 （要将工作函数设为全局函数或者静态成员函数）
         // 传递一个函数指针，并将 this 指针做为参数传递给它（成员函数有默认的this指针做为参数）
@@ -105,10 +100,8 @@ ThreadPool::ThreadPool(size_t thread_num) : pool_(std::make_shared<Pool>())
     }
 }
 
-ThreadPool::~ThreadPool()
-{
-    if (pool_)
-    {
+ThreadPool::~ThreadPool() {
+    if (pool_) {
         {
             std::lock_guard<std::mutex> locker(pool_->mtx);
             pool_->is_stop = true;
@@ -117,13 +110,10 @@ ThreadPool::~ThreadPool()
     }
 }
 
-void ThreadPool::Work()
-{
+void ThreadPool::Work() {
     std::unique_lock<std::mutex> locker(pool_->mtx); 
-    while (true)
-    {
-        if (!pool_->tasks.empty())
-        {
+    while (true) {
+        if (!pool_->tasks.empty()) {
             auto task = std::move(pool_->tasks.front());
             pool_->tasks.pop();
             locker.unlock(); // 解锁，让其他线程也可以去取任务工作
