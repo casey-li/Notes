@@ -348,12 +348,6 @@ private:
 ## :lollipop: Vector
 
 ```c++
-#include <iostream>
-#include <vector>
-#include <memory>
-
-using namespace std;
-
 template <typename T>
 class Vector {
 public:
@@ -472,4 +466,167 @@ int main() {
 		cout << test[i] << endl;
 }
 
+```
+
+[vector的模拟实现](https://mp.weixin.qq.com/s/IWvgnIWcbclXx0OHqei_Sg)
+
+```c++
+template<typename T>
+class myVector {
+public:
+    myVector() : start(nullptr), finish(nullptr), endpos(nullptr) {}
+
+    myVector(size_t n, const T& val = T()) : start(nullptr), finish(nullptr), endpos(nullptr) {
+        reverse(n);
+        for (size_t i = 0; i < n; ++i) {
+            start[i] = val;
+        }
+        finish = start + n;
+    }
+
+    myVector(const myVector<T>& vec) {
+        start = new T[vec.size()];
+        for (size_t i = 0; i < vec.size(); ++i) {
+            start[i] = vec[i];
+        }
+        finish = start + vec.size();
+        end = finish;
+    }
+
+    ~myVector() {
+        delete[] start;
+        start = finish = endpos = nullptr;
+    }
+
+    void reverse(size_t n) {
+        if (n > capacity()) {
+            size_t sz = size();
+            T *tmp = new T[n];
+            if (start) {
+                for (size_t i = 0; i < sz; ++i) {
+                    tmp[i] = start[i];
+                }
+                delete[] start;
+            }
+            start = tmp;
+            finish = start + sz;
+            endpos = start + n;
+        }
+    }
+
+    void resize(size_t n, const T &val = T()) {
+        if (n < size()) {
+            finish = start + n;
+        } else if (n > size()) {
+            T *tmp = new T[n];
+            for (size_t i = 0; i < n; ++i) {
+                if (i < size()) {
+                    tmp[i] = start[i];
+                } else {
+                    tmp[i] = val;
+                }
+            }
+            delete []start;
+            start = tmp;
+            finish = start + n;
+            end = finish;
+        }
+    }
+
+    void push_back(const T &val) {
+        if (size() == capacity()) {
+            size_t len = size() == 0 ? 2 : size() * 2;
+            reverse(len);
+        }
+        *finish = val;
+        ++finish;
+    }
+
+    void pop_back() {
+        assert(size());
+        --finish;
+    }
+
+    T *erase(T* pos) {
+        assert(pos < finish && pos >= start);
+        T *cur = pos;
+        while (cur != finish) {
+            *cur = *(cur + 1);
+            cur++;
+        }
+        finish--;
+        return pos;
+    }
+
+    T *insert(T *pos, const T &val) {
+        assert(pos <= finish && pos >= start);
+        size_t p = pos - start;
+        if (finish == end) {
+            reverse(capacity() + 1);
+        }
+        for (size_t i = size() - 1; i > p; --i) {
+            start[i] = start[i - 1];
+        }
+        start[p] = val;
+        return start + p;
+    }
+
+    myVector<T>& operator=(const myVector<T> &v) {
+        if (start != v.start) {
+            T *tmp = new T[v.size()];
+            for (size_t i = 0; i < v.size(); ++i) {
+                tmp[i] = v.start[i];
+            }
+            delete []start;
+            start = tmp;
+            finish = start + v.size();
+            end = finish;
+        }
+        return *this;
+    }
+
+    size_t size() const {
+        return finish - start;
+    }
+
+    size_t capacity() const {
+        return endpos - start;
+    }
+
+    T* begin() {
+        return start;
+    }
+
+    T* end() {
+        return finish;
+    }
+
+    T& front() {
+        return *start;
+    }
+
+    T& back() {
+        return *(finish - 1);
+    }
+
+    T& operator[](size_t pos) {
+        assert(pos < size());
+        return *(start + pos);
+    }
+
+    const T& operator[](size_t pos) const {
+        assert(pos < size());
+        return *(start + pos);
+    }
+
+    bool empty() {
+        return start == finish;
+    }
+
+
+private:
+    T* start;
+    T* finish; // 这里的 finish 指向的是最后一个数的下一个位置
+    T* endpos;
+};
 ```
