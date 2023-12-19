@@ -627,9 +627,113 @@ Ajax - 异步交互技术
 
 ![](imgs/167_案例_登陆校验Filter_流程.jpg)
 
+![](imgs/168_案例_登陆校验_Interceptor快速入门.jpg)
 
+![](imgs/169_案例_登陆校验_Interceptor拦截路径.jpg)
 
+![](imgs/169_案例_登陆校验_Interceptor执行流程.jpg)
 
+![](imgs/170_案例_登陆校验Interceptor.jpg)
+
+![](imgs/171_案例_异常处理1.jpg)
+
+![](imgs/171_案例_全局异常处理器.jpg)
+
+![](imgs/171_案例_异常处理小结.jpg)
+
+## 事务管理 & AOP
+
+- 事务管理
+
+![](imgs/172_事务管理.jpg)
+
+![](imgs/172_事务管理2.jpg)
+
+![](imgs/172_事务管理_spring事务管理.jpg)
+
+![](imgs/172_事务管理2.jpg)
+
+![](imgs/172_事务管理_spring事务管理2.jpg)
+
+![](imgs/173_事务管理_rollbackFor.jpg)
+
+![](imgs/174_事务管理_传播行为.jpg)
+
+![](imgs/174_事务管理_传播行为2.jpg)
+
+![](imgs/174_事务管理_传播行为案例.jpg)
+
+- AOP
+
+![](imgs/175_AOP概述.jpg)
+
+![](imgs/175_AOP_快速入门步骤.jpg)
+
+![](imgs/175_AOP_快速入门_场景.jpg)
+
+![](imgs/176_AOP核心概念.jpg)
+
+![](imgs/176_AOP执行流程.jpg)
+
+![](imgs/177_AOP通知类型.jpg)
+
+![](imgs/177_AOP通知类型_pointcut.jpg)
+
+![](imgs/177_AOP通知类型小结.jpg)
+
+![](imgs/178_AOP通知顺序.jpg)
+
+![](imgs/179_AOP进阶_切入点表达式.jpg)
+
+![](imgs/179_AOP进阶_切入点表达式_execution.jpg)
+
+![](imgs/179_AOP进阶_切入点表达式_execution2.jpg)
+
+![](imgs/179_AOP进阶_切入点表达式_execution3.jpg)
+
+![](imgs/180_AOP进阶_切入点表达式_annotation.jpg)
+
+![](imgs/180_AOP进阶_切入点表达式小结.jpg)
+
+![](imgs/181_AOP进阶_连接点.jpg)
+
+![](imgs/182_AOP案例_记录操作日志.jpg)
+
+![](imgs/182_AOP案例_记录操作日志2.jpg)
+
+## SpringBoot原理
+
+- 配置优先级
+
+![](imgs/183_SpringBoot配置.jpg)
+
+![](imgs/183_SpringBoot配置2.jpg)
+
+![](imgs/183_SpringBoot配置3.jpg)
+
+![](imgs/183_SpringBoot配置4.jpg)
+
+- Bean 管理
+
+![](imgs/184_Bean的管理_bean的获取.jpg)
+
+![](imgs/185_Bean的管理_bean的作用域.jpg)
+
+![](imgs/185_Bean的管理_bean的作用域2.jpg)
+
+![](imgs/186_Bean的管理_第三方bean.jpg)
+
+![](imgs/186_Bean的管理_第三方bean2.jpg)
+
+- springboot 原理
+
+spring 需要一个一个引入依赖并且需要保证引入依赖的版本匹配；而springboot仅需要引入一个依赖（依靠maven传递即可）
+
+![](imgs/187_springboot原理_起步依赖.jpg)
+
+![](imgs/187_springboot原理_起步依赖2.jpg)
+
+![](imgs/188_springboot原理_自动配置概述.jpg)
 
 
 
