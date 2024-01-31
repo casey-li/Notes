@@ -2015,7 +2015,7 @@ public class Server {
 ![](imgs/397_反射总结.jpg)
 
 
-### 动态代理
+## 动态代理
 
 ![](imgs/398_代理概述.jpg)
 
@@ -2151,20 +2151,239 @@ public class BigStar implements Star {
 
 ```
 
+## 基础加强
 
+### 日志
 
+![](imgs/401_基础加强_日志的优势_.jpg)
 
+![](imgs/401_基础加强_日志体系结构_.jpg)
 
+![](imgs/401_基础加强_日志体系结构小结_.jpg)
 
+![](imgs/401_基础加强_Logback日志框架.jpg)
 
+![](imgs/401_基础加强_Logback使用步骤.jpg)
 
+![](imgs/401_基础加强_Logback配置文件.jpg)
 
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- CONSOLE ：表示当前的日志信息是可以输出到控制台的。 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <!--输出流对象 默认 System.out 改为 System.err-->
+        <target>System.out</target>
+        <encoder>
+            <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度
+                %msg：日志消息，%n是换行符-->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5level]  %c [%thread] : %msg%n</pattern>
+        </encoder>
+    </appender>
 
+    <!-- File是输出的方向通向文件的 -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <!--日志输出路径-->
+        <file>C:/code/itheima-data.log</file>
+        <!--指定日志文件拆分和压缩规则-->
+        <rollingPolicy
+                       class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!--通过指定压缩文件名称，来确定分割文件方式-->
+            <fileNamePattern>C:/code/itheima-data2-%d{yyyy-MMdd}.log%i.gz</fileNamePattern>
+            <!--文件拆分大小-->
+            <maxFileSize>1MB</maxFileSize>
+        </rollingPolicy>
+    </appender>
 
+    <!--
+    level:用来设置打印级别，大小写无关：TRACE, DEBUG, INFO, WARN, ERROR, ALL 和 OFF
+   ， 默认debug
+    <root>可以包含零个或多个<appender-ref>元素，标识这个输出位置将会被本日志级别控制。
+    -->
+    <root level="info">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE" />
+    </root>
+</configuration>
+```
 
+![](imgs/401_基础加强_Logback日志级别.jpg)
 
+![](imgs/401_基础加强_Logback日志级别小结.jpg)
 
+### 类加载器
 
+![](imgs/402_基础加强_类加载器概述.jpg)
+
+![](imgs/402_基础加强_类加载时机.jpg)
+
+![](imgs/402_基础加强_类加载过程.jpg)
+
+![](imgs/402_基础加强_类加载过程2.jpg)
+
+![](imgs/402_基础加强_类加载过程3.jpg)
+
+![](imgs/402_基础加强_类加载过程4.jpg)
+
+![](imgs/402_基础加强_类加载过程5.jpg)
+
+![](imgs/402_基础加强_类加载过程6.jpg)
+
+![](imgs/402_基础加强_类加载过程7.jpg)
+
+![](imgs/402_基础加强_类加载器分类.jpg)
+
+![](imgs/402_基础加强_类加载器双亲委派模型.jpg)
+
+![](imgs/402_基础加强_类加载器常用方法.jpg)
+
+### xml
+
+- xml 概述
+
+![](imgs/403_基础加强_xml_配置文件.jpg)
+
+![](imgs/403_基础加强_xml_配置文件2.jpg)
+
+![](imgs/403_基础加强_xml_配置文件3.jpg)
+
+![](imgs/403_基础加强_xml_配置文件4.jpg)
+
+![](imgs/403_基础加强_xml_概述.jpg)
+
+![](imgs/403_基础加强_xml_语法规则.jpg)
+
+![](imgs/403_基础加强_xml_标签规则.jpg)
+
+![](imgs/403_基础加强_xml_语法规则2.jpg)
+
+- 文档约束
+
+![](imgs/403_基础加强_xml_文档约束.jpg)
+
+![](imgs/403_基础加强_xml_文档约束DTD.jpg)
+
+![](imgs/403_基础加强_xml_文档约束DTD的使用.jpg)
+
+![](imgs/403_基础加强_xml_文档约束schema.jpg)
+
+![](imgs/403_基础加强_xml_文档约束schema的使用.jpg)
+
+![](imgs/403_基础加强_xml_文档约束schema的使用2.jpg)
+
+- xml 解析 (Dom4J)
+
+![](imgs/403_基础加强_xml_解析.jpg)
+
+![](imgs/403_基础加强_xml_解析2.jpg)
+
+![](imgs/403_基础加强_xml_Dom解析工具.jpg)
+
+![](imgs/403_基础加强_xml_Dom解析.jpg)
+
+![](imgs/403_基础加强_xml_Dom4J的使用.jpg)
+
+![](imgs/403_基础加强_xml_Dom4J的使用2.jpg)
+
+![](imgs/403_基础加强_xml_Dom4J的使用3.jpg)
+
+- Xpath
+
+![](imgs/403_基础加强_xml_Xpath介绍.jpg)
+
+![](imgs/403_基础加强_xml_Xpath使用步骤.jpg)
+
+![](imgs/403_基础加强_xml_Xpath绝对路径.jpg)
+
+![](imgs/403_基础加强_xml_Xpath相对路径.jpg)
+
+![](imgs/403_基础加强_xml_Xpath全文检索.jpg)
+
+![](imgs/403_基础加强_xml_Xpath属性查找.jpg)
+
+### 单元测试
+
+![](imgs/404_基础加强_单元测试概述.jpg)
+
+![](imgs/404_基础加强_单元测试概述2.jpg)
+
+![](imgs/404_基础加强_单元测试概述小结.jpg)
+
+![](imgs/404_基础加强_单元测试_JUnit使用步骤.jpg)
+
+![](imgs/404_基础加强_单元测试_JUnit常用注解.jpg)
+
+### 注解
+
+![](imgs/405_基础加强_注解_概述.jpg)
+
+![](imgs/405_基础加强_注解_概述2.jpg)
+
+![](imgs/405_基础加强_注解_自定义注解格式.jpg)
+
+![](imgs/405_基础加强_注解_自定义注解使用.jpg)
+
+![](imgs/405_基础加强_注解_自定义注解特殊属性.jpg)
+
+![](imgs/405_基础加强_注解_元注解.jpg)
+
+![](imgs/405_基础加强_注解_元注解2.jpg)
+
+![](imgs/405_基础加强_注解_注解的解析.jpg)
+
+![](imgs/405_基础加强_注解_注解的解析2.jpg)
+
+![](imgs/405_基础加强_注解_注解的解析案例.jpg)
+
+```java
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface MyTest {
+
+}
+
+public class MyTestMethod {
+
+    @MyTest
+    public void method1(){
+        System.out.println("method1");
+    }
+
+    public void method2(){
+        System.out.println("method2");
+    }
+
+    @MyTest
+    public void method3(){
+        System.out.println("method3");
+    }
+}
+
+public class MyTestDemo {
+    public static void main(String[] args) throws ClassNotFoundException, IllegalAccessException, InstantiationException, InvocationTargetException {
+        //1,获取class对象
+        Class clazz = Class.forName("com.itheima.test2.MyTestMethod");
+
+        //获取对象
+        Object o = clazz.newInstance();
+
+        //2.获取所有方法
+        Method[] methods = clazz.getDeclaredMethods();
+        for (Method method : methods) {
+            //method依次表示类里面的每一个方法
+            method.setAccessible(true);
+            //判断当前方法有没有MyTest注解，有的话直接执行
+            if(method.isAnnotationPresent(MyTest.class)){
+                method.invoke(o);
+            }
+        }
+    }
+}
+```
 
 
 
